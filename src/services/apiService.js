@@ -1,15 +1,16 @@
 // src/services/apiService.js
-export const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
+export const API_URL = process.env.REACT_APP_API_URL 
+  ? `https://${process.env.REACT_APP_API_URL}` 
+  : 'http://127.0.0.1:5000';
 
 export async function apiRequest(endpoint, formData, isExport = false) {
   try {
-    console.log('API Request:', {
-      url: `${API_URL}/${endpoint}`,
-      method: 'POST',
-      formData: Object.fromEntries(formData.entries())
-    });
+    const fullUrl = `${API_URL}/${endpoint}`;
+    
+    console.log('Full API Request URL:', fullUrl);
+    console.log('Request Payload:', Object.fromEntries(formData.entries()));
 
-    const response = await fetch(`${API_URL}/${endpoint}`, {
+    const response = await fetch(fullUrl, {
       method: 'POST',
       body: formData,
     });
@@ -20,12 +21,6 @@ export async function apiRequest(endpoint, formData, isExport = false) {
       const errorText = await response.text();
       console.error('Error response:', errorText);
       throw new Error(errorText || 'Operation failed');
-    }
-
-    // For debugging
-    if (isExport) {
-      const contentType = response.headers.get('content-type');
-      console.log('Content-Type:', contentType);
     }
 
     if (isExport) {
