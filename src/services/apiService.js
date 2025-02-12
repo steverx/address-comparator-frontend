@@ -10,20 +10,19 @@ export async function apiRequest(endpoint, formData, isExport = false) {
     const response = await fetch(fullUrl, {
       method: 'POST',
       body: formData,
+      credentials: 'include',
       headers: {
+        'Accept': 'application/json',
         'Origin': 'https://address-comparator-frontend-production.up.railway.app'
-      },
-      credentials: 'same-origin',  
-      mode: 'cors'  
+      }
     });
 
     console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Error response:', errorText);
-      throw new Error(errorText || 'Operation failed');
+      throw new Error(errorText || `HTTP error! status: ${response.status}`);
     }
 
     if (isExport) {
