@@ -6,11 +6,9 @@ export async function apiRequest(endpoint, formData, isExport = false) {
     const response = await fetch(fullUrl, {
       method: 'POST',
       body: formData,
-      mode: 'cors',
       credentials: 'include',
       headers: {
-        'Accept': 'application/json',
-        'Origin': 'https://address-comparator-frontend-production.up.railway.app'
+        'Accept': 'application/json'
       }
     });
 
