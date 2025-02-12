@@ -1,6 +1,4 @@
-export const API_URL = process.env.REACT_APP_API_URL 
-  ? `https://${process.env.REACT_APP_API_URL}` 
-  : 'http://127.0.0.1:5000';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
 
 export async function apiRequest(endpoint, formData, isExport = false) {
   try {
@@ -18,6 +16,7 @@ export async function apiRequest(endpoint, formData, isExport = false) {
     });
 
     console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
