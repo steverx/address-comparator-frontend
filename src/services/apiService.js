@@ -1,15 +1,13 @@
-export const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
-
 export async function apiRequest(endpoint, formData, isExport = false) {
   try {
-    const fullUrl = `https://address-comparator-backend-production.up.railway.app/${endpoint}`;
-    
+    const fullUrl = `${process.env.REACT_APP_API_URL}/${endpoint}`;
     console.log('Full API Request URL:', fullUrl);
-    console.log('Request Payload:', Object.fromEntries(formData.entries()));
+    console.log('Request Payload:', formData);
 
     const response = await fetch(fullUrl, {
       method: 'POST',
       body: formData,
+      mode: 'cors',
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
@@ -17,23 +15,14 @@ export async function apiRequest(endpoint, formData, isExport = false) {
       }
     });
 
-    console.log('Response status:', response.status);
-
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Error response:', errorText);
-      throw new Error(errorText || `HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     if (isExport) {
-      const blob = await response.blob();
-      const filename = `address_matches_${new Date().toISOString().slice(0,10)}.xlsx`;
-      return { blob, filename };
+      return response.blob();
     }
-
-    const jsonResponse = await response.json();
-    console.log('JSON Response:', jsonResponse);
-    return jsonResponse;
+    return response.json();
   } catch (error) {
     console.error('Full API Request Error:', error);
     throw error;
