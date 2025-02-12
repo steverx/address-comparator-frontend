@@ -18,11 +18,18 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
             const formData = new FormData();
             formData.append('file', file);
             try {
+                // Log the file being processed
+                console.log('Fetching columns for file:', file.name);
+
                 const data = await apiRequest('columns', formData);
-                setColumns(data.columns);
+                
+                // Log the received columns
+                console.log('Received columns:', data.columns);
+
+                setColumns(data.columns || []);
 
                 // Initialize selectedColumns
-                if (data.columns.length > 0) {
+                if (data.columns && data.columns.length > 0) {
                     const addressColumns = data.columns.filter(col =>
                         col.toLowerCase().includes('address') ||
                         col.toLowerCase().includes('street')
@@ -33,6 +40,7 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                 }
 
             } catch (error) {
+                console.error('Error fetching columns:', error);
                 setError(`Error: ${error.message}`);
                 setColumns(null);
                 setSelectedColumns([]);
