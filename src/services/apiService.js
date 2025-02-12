@@ -12,7 +12,9 @@ export async function apiRequest(endpoint, formData, isExport = false) {
       body: formData,
       headers: {
         'Origin': 'https://address-comparator-frontend-production.up.railway.app'
-      }
+      },
+      credentials: 'same-origin',  
+      mode: 'cors'  
     });
 
     console.log('Response status:', response.status);
