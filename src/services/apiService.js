@@ -7,15 +7,15 @@ export async function apiRequest(endpoint, formData, isExport = false) {
     const response = await fetch(fullUrl, {
       method: 'POST',
       body: formData,
-      mode: 'cors',
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
-        'Origin': 'https://address-comparator-frontend-production.up.railway.app'
       }
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error:', errorText);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
