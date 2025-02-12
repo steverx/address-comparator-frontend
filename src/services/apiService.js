@@ -5,7 +5,8 @@ export const API_URL = process.env.REACT_APP_API_URL
 
 export async function apiRequest(endpoint, formData, isExport = false) {
   try {
-    const fullUrl = `${API_URL}/${endpoint}`;
+    // Use the full external URL from Railway
+    const fullUrl = `https://address-comparator-backend-production.up.railway.app/${endpoint}`;
     
     console.log('Full API Request URL:', fullUrl);
     console.log('Request Payload:', Object.fromEntries(formData.entries()));
