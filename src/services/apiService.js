@@ -1,4 +1,4 @@
-export const API_URL = 'https://address-comparator-backend-production.up.railway.app';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
 
 export async function apiRequest(endpoint, formData, isExport = false) {
   try {
