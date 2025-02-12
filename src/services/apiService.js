@@ -1,11 +1,9 @@
-// src/services/apiService.js
 export const API_URL = process.env.REACT_APP_API_URL 
   ? `https://${process.env.REACT_APP_API_URL}` 
   : 'http://127.0.0.1:5000';
 
 export async function apiRequest(endpoint, formData, isExport = false) {
   try {
-    // Use the full external URL from Railway
     const fullUrl = `https://address-comparator-backend-production.up.railway.app/${endpoint}`;
     
     console.log('Full API Request URL:', fullUrl);
@@ -14,6 +12,9 @@ export async function apiRequest(endpoint, formData, isExport = false) {
     const response = await fetch(fullUrl, {
       method: 'POST',
       body: formData,
+      headers: {
+        'Origin': 'https://address-comparator-frontend-production.up.railway.app'
+      }
     });
 
     console.log('Response status:', response.status);
@@ -34,7 +35,7 @@ export async function apiRequest(endpoint, formData, isExport = false) {
     console.log('JSON Response:', jsonResponse);
     return jsonResponse;
   } catch (error) {
-    console.error('API Request Error:', error);
+    console.error('Full API Request Error:', error);
     throw error;
   }
 }
