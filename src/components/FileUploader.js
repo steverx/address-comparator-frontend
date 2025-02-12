@@ -1,11 +1,12 @@
 // src/components/FileUploader.js
 import React, { useState, useEffect } from 'react';
+import { apiRequest } from '../services/apiService';
 
 function FileUploader({ onCompare, onExport, setError, loading }) {
     const [file1, setFile1] = useState(null);
     const [file2, setFile2] = useState(null);
-    const [columns1, setColumns1] = useState(null); // Initialize as null
-    const [columns2, setColumns2] = useState(null); // Initialize as null
+    const [columns1, setColumns1] = useState(null);
+    const [columns2, setColumns2] = useState(null);
     const [selectedColumns1, setSelectedColumns1] = useState([]);
     const [selectedColumns2, setSelectedColumns2] = useState([]);
     const [threshold, setThreshold] = useState(80);
@@ -17,40 +18,30 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
             const formData = new FormData();
             formData.append('file', file);
             try {
-                const response = await fetch('/columns', {
-                    method: 'POST',
-                    body: formData,
-                });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to fetch columns');
-                }
-                const data = await response.json();
+                const data = await apiRequest('columns', formData);
                 setColumns(data.columns);
 
-                // Initialize selectedColumns *here*, after data is loaded
+                // Initialize selectedColumns
                 if (data.columns.length > 0) {
                     const addressColumns = data.columns.filter(col =>
                         col.toLowerCase().includes('address') ||
                         col.toLowerCase().includes('street')
                     );
-                    // Initialize with the first matching column, or the first column
                     setSelectedColumns([addressColumns[0] || data.columns[0]]);
                 } else {
-                    setSelectedColumns([]); // Set to empty if no columns
+                    setSelectedColumns([]);
                 }
 
             } catch (error) {
                 setError(`Error: ${error.message}`);
-                setColumns(null); // Set to null on error
+                setColumns(null);
                 setSelectedColumns([]);
             }
         }
 
         if (file1) fetchColumns(file1, setColumns1, setSelectedColumns1);
         if (file2) fetchColumns(file2, setColumns2, setSelectedColumns2);
-    }, [file1, file2, setError]); // Correct dependencies
-
+    }, [file1, file2, setError]);
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
@@ -128,7 +119,6 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
         }
         onExport(file1, file2, selectedColumns1, selectedColumns2, threshold, parser);
     };
-
 
     return (
         <div className="p-4 bg-white rounded-lg shadow">

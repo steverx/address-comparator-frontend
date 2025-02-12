@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState, useCallback } from 'react';
 import FileUploader from './components/FileUploader';
 import ResultsTable from './components/ResultsTable';
