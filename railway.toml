@@ -5,7 +5,7 @@ dockerfile = "Dockerfile"
 [deploy]
 startCommand = "node server.js"
 healthcheck = "/health"
+restartPolicy = "ON_FAILURE"
 
 [[ports]]
 port = "3000"
-internalPort = "3000"
