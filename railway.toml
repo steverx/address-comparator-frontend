@@ -4,11 +4,15 @@ dockerfile = "Dockerfile"
 
 [deploy]
 startCommand = "node server.js"
-healthcheck = "/"
-healthcheckTimeout = 100
-restartPolicy = "ON_FAILURE"
+healthcheck = "/health"
+healthcheckTimeout = 30
+healthcheckInterval = 15
+restartPolicyType = "on-failure"
 restartPolicyMaxRetries = 5
 
-[[services]]
-internal_port = 3000
-protocol = "http"
+[[ports]]
+port = "3000"
+internalPort = "3000"
+
+[deploy.env]
+NODE_ENV = "production"
