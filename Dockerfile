@@ -8,8 +8,8 @@ RUN apk add --no-cache curl
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production
+# Install dependencies with exact versions
+RUN npm ci --only=production
 
 # Copy source code
 COPY . .
@@ -17,12 +17,16 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Environment variables
+# Set environment variables
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=8080
 
 # Expose port
-EXPOSE 3000
+EXPOSE 8080
 
-# Start command - explicitly use node to run server.js
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Start command
 CMD ["node", "server.js"]
