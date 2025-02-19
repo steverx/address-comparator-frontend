@@ -1,8 +1,9 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const app = express();
 
-// Log startup information
+// Startup logging
 console.log('Starting server...');
 console.log('Current directory:', __dirname);
 console.log('Environment variables:', {
@@ -11,22 +12,32 @@ console.log('Environment variables:', {
     REACT_APP_API_URL: process.env.REACT_APP_API_URL
 });
 
-// Verify build directory exists
+// Check build directory
 const buildPath = path.join(__dirname, 'build');
+console.log('Checking build path:', buildPath);
+
 try {
-    require('fs').accessSync(buildPath);
-    console.log('Build directory found at:', buildPath);
+    const stats = fs.statSync(buildPath);
+    console.log('Build directory exists:', stats.isDirectory());
+    const files = fs.readdirSync(buildPath);
+    console.log('Build directory contents:', files);
 } catch (err) {
-    console.error('Build directory not found! Error:', err);
-    console.error('Please ensure npm run build has been executed');
+    console.error('Error accessing build directory:', err);
+    process.exit(1);
 }
 
 // Serve static files
 app.use(express.static(buildPath));
 
+// Request logging middleware
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+});
+
 // Handle React routing
 app.get('/*', function (req, res) {
-    console.log('Handling request for:', req.path);
+    console.log('Serving index.html for path:', req.path);
     res.sendFile(path.join(buildPath, 'index.html'));
 });
 
@@ -39,7 +50,11 @@ app.use((err, req, res, next) => {
 const port = process.env.PORT || 3000;
 
 // Start server
-app.listen(port, '0.0.0.0', () => {
+app.listen(port, '0.0.0.0', (err) => {
+    if (err) {
+        console.error('Error starting server:', err);
+        process.exit(1);
+    }
     console.log(`Server is running on port ${port}`);
-    console.log(`Server is ready to accept connections`);
+    console.log('Server is ready to accept connections');
 });
