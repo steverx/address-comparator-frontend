@@ -2,37 +2,19 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install necessary tools
-RUN apk add --no-cache curl
-
-# Copy package files
-COPY package*.json ./
-
 # Install dependencies
+COPY package*.json ./
 RUN npm ci
 
-# Copy source code
+# Copy and build app
 COPY . .
+RUN npm run build
 
-# Build the app
-RUN npm run build && \
-    if [ ! -d "build" ]; then \
-        echo "Build directory not created!" && exit 1; \
-    fi && \
-    if [ ! -f "build/index.html" ]; then \
-        echo "index.html not found in build directory!" && exit 1; \
-    fi
-
-# Set environment variables
-ENV NODE_ENV=production
-ENV PORT=3000
-
-# Expose the port
+# Expose port
 EXPOSE 3000
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/health || exit 1
+HEALTHCHECK --interval=10s --timeout=3s CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Start the server
+# Start server
 CMD ["node", "server.js"]

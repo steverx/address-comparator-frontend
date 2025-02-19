@@ -1,87 +1,41 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
-
 const app = express();
 
-// Logging for startup
-console.log('Starting server initialization...');
-console.log('Current directory:', __dirname);
-console.log('Directory contents:', fs.readdirSync(__dirname));
+// Log environment variables at startup
+console.log('Starting server with config:', {
+    PORT: process.env.PORT,
+    NODE_ENV: process.env.NODE_ENV,
+    PWD: process.cwd()
+});
 
-// Check build directory
-const buildPath = path.join(__dirname, 'build');
-if (fs.existsSync(buildPath)) {
-    console.log('Build directory found:', buildPath);
-    console.log('Build contents:', fs.readdirSync(buildPath));
-} else {
-    console.error('Build directory not found!');
-    process.exit(1);
-}
-
-// Request logging middleware
+// Basic middleware for logging
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
     next();
 });
 
-// Health check endpoint
+// Health check must return quickly
 app.get('/health', (req, res) => {
-    res.sendStatus(200);
+    res.status(200).send('OK');
 });
 
-// Static file serving
-app.get('*.js', (req, res, next) => {
-    res.set('Content-Type', 'application/javascript');
-    next();
-});
+// Serve static files
+app.use(express.static(path.join(__dirname, 'build')));
 
-app.get('*.css', (req, res, next) => {
-    res.set('Content-Type', 'text/css');
-    next();
-});
-
-// Serve static files with explicit content types
-app.use(express.static(buildPath, {
-    etag: true,
-    lastModified: true,
-    setHeaders: (res, path) => {
-        if (path.endsWith('.html')) {
-            res.setHeader('Cache-Control', 'no-cache');
-        } else {
-            res.setHeader('Cache-Control', 'max-age=3600');
-        }
-    }
-}));
-
-// Serve index.html for all other routes
+// All routes serve index.html
 app.get('*', (req, res) => {
-    try {
-        const indexPath = path.join(buildPath, 'index.html');
-        if (fs.existsSync(indexPath)) {
-            console.log('Serving index.html');
-            res.sendFile(indexPath);
-        } else {
-            console.error('index.html not found!');
-            res.status(404).send('index.html not found');
-        }
-    } catch (error) {
-        console.error('Error serving index.html:', error);
-        res.status(500).send('Server error');
-    }
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
     console.error('Server error:', err);
-    res.status(500).send('Something broke!');
+    res.status(500).send('Server error');
 });
 
-const PORT = process.env.PORT || 3000;
-
-// Start server with explicit error handling
+// Start server
+const PORT = parseInt(process.env.PORT || '3000', 10);
 const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('Server ready to accept connections');
+    console.log(`Server running at http://0.0.0.0:${PORT}`);
 });
