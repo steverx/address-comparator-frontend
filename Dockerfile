@@ -2,19 +2,31 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Add necessary packages
+RUN apk add --no-cache curl
+
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm ci
 
-# Copy and build app
+# Copy source code
 COPY . .
+
+# Build the app
 RUN npm run build
+
+# Environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
 
 # Expose port
 EXPOSE 3000
 
 # Healthcheck
-HEALTHCHECK --interval=10s --timeout=3s CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=30s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
 
-# Start server
-CMD ["node", "server.js"]
+# Start command
+CMD ["npm", "start"]
