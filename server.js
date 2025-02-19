@@ -1,78 +1,26 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const app = express();
 
-// Trust proxy - important for Railway
-app.set('trust proxy', true);
-
-// Enable CORS
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    next();
+console.log('Starting server with environment:', {
+    NODE_ENV: process.env.NODE_ENV,
+    PORT: process.env.PORT
 });
 
-// Basic request logging
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${req.ip}`);
-    next();
-});
+// Serve static files from the React build directory
+app.use(express.static('build'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'healthy' });
+    res.status(200).send('OK');
 });
 
-// Verify build path
-const buildPath = path.join(__dirname, 'build');
-console.log('Build path:', buildPath);
-console.log('Build directory exists:', fs.existsSync(buildPath));
-
-// Serve static files with caching headers
-app.use(express.static(buildPath, {
-    maxAge: '1h',
-    setHeaders: (res, path) => {
-        if (path.endsWith('.html')) {
-            res.setHeader('Cache-Control', 'no-cache');
-        }
-    }
-}));
-
-// Handle React routing
+// All other routes should serve index.html
 app.get('*', (req, res) => {
-    const indexPath = path.join(buildPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.status(404).send('Application not found');
-    }
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 const port = process.env.PORT || 3000;
-
-// Start server with error handling
-const server = app.listen(port, '0.0.0.0', (error) => {
-    if (error) {
-        console.error('Error starting server:', error);
-        process.exit(1);
-    }
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
-});
-
-// Handle server errors
-server.on('error', (error) => {
-    console.error('Server error:', error);
-    if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${port} is already in use`);
-        process.exit(1);
-    }
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    server.close(() => {
-        console.log('Server shut down gracefully');
-        process.exit(0);
-    });
 });

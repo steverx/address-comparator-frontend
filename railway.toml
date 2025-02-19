@@ -5,14 +5,7 @@ dockerfile = "Dockerfile"
 [deploy]
 startCommand = "node server.js"
 healthcheck = "/health"
-healthcheckTimeout = 30
-healthcheckInterval = 15
-restartPolicy = "ON_FAILURE"
-numReplicas = 1
 
 [[ports]]
 port = "3000"
 internalPort = "3000"
-
-[deploy.env]
-NODE_ENV = "production"
