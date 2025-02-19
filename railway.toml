@@ -1,0 +1,13 @@
+[build]
+builder = "DOCKERFILE"
+dockerfile = "Dockerfile"
+
+[deploy]
+startCommand = "serve -s build -l $PORT"
+healthcheck = "/"
+restartPolicy = "ON_FAILURE"
+
+[[services]]
+name = "web"
+ports = [3000]
+protocol = "http"
