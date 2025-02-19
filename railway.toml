@@ -3,11 +3,11 @@ builder = "DOCKERFILE"
 dockerfile = "Dockerfile"
 
 [deploy]
-startCommand = "serve -s build -l $PORT"
+startCommand = "node server.js"
 healthcheck = "/"
 restartPolicy = "ON_FAILURE"
+numReplicas = 1
 
 [[services]]
-name = "web"
-ports = [3000]
+internal_port = 3000
 protocol = "http"
