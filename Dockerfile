@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with correct cache mount syntax
-RUN --mount=type=cache,id=npm,target=/root/.npm \
+# Install dependencies with prefixed cache ID
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
     npm ci
 
 # Copy source files
@@ -26,8 +26,8 @@ COPY --from=builder /app/build ./build
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server.js ./
 
-# Install only production dependencies
-RUN --mount=type=cache,id=npm,target=/root/.npm \
+# Install only production dependencies with prefixed cache ID
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
     npm ci --only=production
 
 # Set environment
