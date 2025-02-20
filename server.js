@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-let PORT = parseInt(process.env.PORT || '3000', 10);
+let PORT = parseInt(process.env.PORT || '8080', 10);
 
 // Trust Railway's proxy and enable keep-alive
 app.set('trust proxy', 1);
@@ -69,12 +69,46 @@ app.get('/health', (req, res) => {
     res.status(200).json(health);
 });
 
-// Static file serving with options
+// Debug endpoint
+app.get('/debug', (req, res) => {
+    const debugInfo = {
+        env: {
+            NODE_ENV: process.env.NODE_ENV,
+            PORT: process.env.PORT,
+            RAILWAY_PUBLIC_DOMAIN: process.env.RAILWAY_PUBLIC_DOMAIN
+        },
+        networkInterfaces: require('os').networkInterfaces(),
+        serverAddress: server.address(),
+        headers: req.headers,
+        build: {
+            exists: fs.existsSync(path.join(__dirname, 'build')),
+            files: fs.existsSync(path.join(__dirname, 'build')) ? 
+                   fs.readdirSync(path.join(__dirname, 'build')) : []
+        }
+    };
+    res.json(debugInfo);
+});
+
+// Static file serving
 app.use(express.static(path.join(__dirname, 'build'), {
     maxAge: '1h',
     etag: true,
-    lastModified: true
+    lastModified: true,
+    setHeaders: (res, path) => {
+        res.set('X-Content-Type-Options', 'nosniff');
+    }
 }));
+
+// Error handler for static files
+app.use((err, req, res, next) => {
+    if (err.code === 'ENOENT') {
+        console.error('Static file not found:', err.path);
+        next();
+    } else {
+        console.error('Static file error:', err);
+        next(err);
+    }
+});
 
 // SPA route with error handling
 app.get('*', (req, res, next) => {
@@ -107,8 +141,9 @@ const startServer = (retries = 3) => {
             platform: process.platform,
             nodeVersion: process.version,
             address: server.address(),
-            buildExists: fs.existsSync(path.join(__dirname, 'build')),
-            time: new Date().toISOString()
+            connections: server.getConnections((err, count) => count),
+            maxConnections: server.maxConnections,
+            networkInterfaces: require('os').networkInterfaces(),
         };
         console.log('Server configuration:', serverInfo);
     }).on('error', (error) => {
@@ -129,8 +164,8 @@ const startServer = (retries = 3) => {
     });
 
     // Configure keep-alive
-    server.keepAliveTimeout = 65000;
-    server.headersTimeout = 66000;
+    server.keepAliveTimeout = 30000;
+    server.headersTimeout = 31000;
 
     return server;
 };
