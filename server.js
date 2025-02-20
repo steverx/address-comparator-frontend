@@ -1,13 +1,21 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
-// Request logging
+// Enhanced startup logging
+console.log('Starting server with configuration:', {
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV,
+    workingDirectory: process.cwd(),
+    buildExists: fs.existsSync(path.join(__dirname, 'build')),
+});
+
+// Request logging middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log('Headers:', req.headers);
     next();
 });
 
