@@ -7,14 +7,15 @@
   "deploy": {
     "startCommand": "node server.js",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 30,
-    "healthcheckInterval": 15,
+    "healthcheckTimeout": 10,
+    "healthcheckInterval": 10,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3,
     "numReplicas": 1,
     "env": {
       "PORT": "8080",
-      "NODE_ENV": "production"
+      "NODE_ENV": "production",
+      "RAILWAY_ENVIRONMENT": "production"
     }
   }
 }

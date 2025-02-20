@@ -2,31 +2,31 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Add necessary packages
+# Install system dependencies
 RUN apk add --no-cache curl
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install app dependencies
 RUN npm ci --only=production
 
-# Copy source code
+# Copy source
 COPY . .
 
-# Build the app
+# Build app
 RUN npm run build
 
-# Set environment variables
+# Environment setup
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Expose port
+# Port configuration
 EXPOSE 8080
 
-# Health check with increased timeout
-HEALTHCHECK --interval=30s --timeout=30s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Health check with retry
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
 
-# Start command
+# Start command with explicit host binding
 CMD ["node", "server.js"]
