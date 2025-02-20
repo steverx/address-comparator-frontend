@@ -5,53 +5,45 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enhanced startup logging
-console.log('Starting server with configuration:', {
-    port: PORT,
-    nodeEnv: process.env.NODE_ENV,
-    workingDirectory: process.cwd(),
-    buildExists: fs.existsSync(path.join(__dirname, 'build'))
-});
-
-// Basic middleware for all requests
+// Request logging middleware
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     next();
 });
 
-// Health check endpoint with enhanced logging
+// Health check endpoint
 app.get('/health', (req, res) => {
-    console.log('Health check requested');
-    res.status(200).json({
+    const healthInfo = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        port: PORT,
         env: process.env.NODE_ENV,
+        port: PORT,
+        pid: process.pid,
+        memory: process.memoryUsage(),
         uptime: process.uptime()
-    });
+    };
+    console.log('Health check:', healthInfo);
+    res.status(200).json(healthInfo);
 });
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'build')));
 
-// Catch-all route for SPA
+// SPA fallback
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// Start server with error handling
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-}).on('error', (err) => {
-    console.error('Server failed to start:', err);
-    process.exit(1);
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({ error: 'Internal server error' });
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down...');
-    server.close(() => {
-        console.log('Server closed');
-        process.exit(0);
-    });
+// Start server with enhanced error handling
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+}).on('error', (error) => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
 });
