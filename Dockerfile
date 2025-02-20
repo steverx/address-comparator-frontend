@@ -2,32 +2,20 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Add necessary packages
-RUN apk add --no-cache curl
-
-# Copy package files
+# Install dependencies first
 COPY package*.json ./
-
-# Install ALL dependencies (not just production)
 RUN npm install
 
-# Copy source
+# Copy source and build
 COPY . .
-
-# Build app
 RUN npm run build
+
+# Verify build directory exists
+RUN ls -la build/
 
 # Environment setup
 ENV NODE_ENV=production
 ENV PORT=8080
-ENV HOST=0.0.0.0
 
-# Port configuration
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=15s --timeout=30s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
-
-# Start command
+# Start command - explicitly use node
 CMD ["node", "server.js"]
