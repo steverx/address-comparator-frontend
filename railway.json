@@ -8,13 +8,6 @@
     "startCommand": "node server.js",
     "restartPolicyType": "ON_FAILURE",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 30,
-    "healthcheckInterval": 15,
-    "numReplicas": 1,
-    "env": {
-      "PORT": "3000",
-      "NODE_ENV": "production",
-      "HOST": "0.0.0.0"
-    }
+    "healthcheckTimeout": 30
   }
 }
