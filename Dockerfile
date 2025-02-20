@@ -1,4 +1,4 @@
-# Build stage
+ # Build stage
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -6,9 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with prefixed cache ID
-RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
-    npm ci
+# Install dependencies
+RUN npm ci
 
 # Copy source files
 COPY . .
@@ -26,9 +25,8 @@ COPY --from=builder /app/build ./build
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server.js ./
 
-# Install only production dependencies with prefixed cache ID
-RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
-    npm ci --only=production
+# Install production dependencies
+RUN npm ci --only=production
 
 # Set environment
 ENV NODE_ENV=production
