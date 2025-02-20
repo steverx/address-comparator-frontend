@@ -5,80 +5,73 @@ const fs = require('fs');
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
-// Request logging with enhanced details
+// Trust Railway's proxy
+app.set('trust proxy', true);
+
+// Add Railway-specific headers
+app.use((req, res, next) => {
+    res.set({
+        'X-Railway-App': process.env.RAILWAY_SERVICE_NAME,
+        'X-Railway-Environment': process.env.RAILWAY_ENVIRONMENT_NAME
+    });
+    next();
+});
+
+// Request logging
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] Request:`, {
         method: req.method,
         path: req.path,
         host: req.get('host'),
-        forwarded: req.get('x-forwarded-for'),
-        protocol: req.protocol
+        'x-forwarded-proto': req.get('x-forwarded-proto'),
+        'x-forwarded-for': req.get('x-forwarded-for')
     });
     next();
 });
 
-// Health check endpoint with connection info
+// Health check
 app.get('/health', (req, res) => {
-    const healthInfo = {
+    res.status(200).json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        env: {
-            NODE_ENV: process.env.NODE_ENV,
-            PORT: PORT,
-            PUBLIC_URL: process.env.RAILWAY_PUBLIC_DOMAIN
-        },
-        request: {
-            host: req.get('host'),
+        proxy: {
             protocol: req.protocol,
-            originalUrl: req.originalUrl
-        }
-    };
-    console.log('Health check:', healthInfo);
-    res.status(200).json(healthInfo);
-});
-
-// Static file serving with explicit options
-app.use(express.static(path.join(__dirname, 'build'), {
-    maxAge: '1h',
-    etag: true,
-    lastModified: true
-}));
-
-// SPA fallback with error handling
-app.get('*', (req, res, next) => {
-    const indexPath = path.join(__dirname, 'build', 'index.html');
-    res.sendFile(indexPath, err => {
-        if (err) {
-            console.error('Error serving index.html:', err);
-            next(err);
+            secure: req.secure,
+            hostname: req.hostname,
+            ip: req.ip
+        },
+        env: {
+            PORT: PORT,
+            NODE_ENV: process.env.NODE_ENV,
+            PUBLIC_URL: process.env.RAILWAY_PUBLIC_DOMAIN
         }
     });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+// Static files with proper headers
+app.use(express.static(path.join(__dirname, 'build'), {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res) => {
+        res.set('X-Content-Type-Options', 'nosniff');
+        res.set('X-Frame-Options', 'DENY');
+    }
+}));
+
+// SPA fallback
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-// Start server with enhanced error reporting
+// Start server with keep-alive
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('Server started:', {
         port: PORT,
         env: process.env.NODE_ENV,
-        publicUrl: process.env.RAILWAY_PUBLIC_DOMAIN,
-        time: new Date().toISOString()
+        domain: process.env.RAILWAY_PUBLIC_DOMAIN
     });
-}).on('error', (error) => {
-    console.error('Server start failed:', error);
-    process.exit(1);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    server.close(() => {
-        console.log('Server closed');
-        process.exit(0);
-    });
-});
+// Keep-alive configuration
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
