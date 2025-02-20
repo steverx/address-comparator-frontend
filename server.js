@@ -4,11 +4,14 @@ const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const HOST = process.env.HOST || '0.0.0.0';
 
-// Request logging middleware
+// Debug logging
+const debug = require('debug')('app:server');
+debug('Starting server...');
+
+// Request logging
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    debug(`${req.method} ${req.url}`);
     next();
 });
 
@@ -16,46 +19,54 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Static file serving with caching
+// Static files with aggressive caching
 app.use(express.static(path.join(__dirname, 'build'), {
     maxAge: '1h',
     etag: true,
     lastModified: true
 }));
 
-// Health check endpoint
+// Health check with detailed response
 app.get('/health', (req, res) => {
-    console.log('Health check requested');
+    debug('Health check requested');
     res.status(200).json({
         status: 'healthy',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        pid: process.pid,
+        uptime: process.uptime()
     });
 });
 
-// Serve React app
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+// React app serving
+app.get('*', (req, res, next) => {
+    const indexPath = path.join(__dirname, 'build', 'index.html');
+    res.sendFile(indexPath, err => {
+        if (err) {
+            debug('Error serving index.html:', err);
+            next(err);
+        }
+    });
 });
 
-// Error handler
+// Error handling
 app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).send('Internal Server Error');
+    debug('Error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
 });
 
 // Start server with proper error handling
-const server = app.listen(PORT, HOST, () => {
-    console.log(`Server running at http://${HOST}:${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+    debug(`Server running on port ${PORT}`);
 }).on('error', (err) => {
-    console.error('Server failed to start:', err);
+    debug('Server failed to start:', err);
     process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down...');
+    debug('SIGTERM received');
     server.close(() => {
-        console.log('Server closed');
+        debug('Server closed');
         process.exit(0);
     });
 });
