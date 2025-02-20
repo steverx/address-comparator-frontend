@@ -1,14 +1,13 @@
 # Build stage
 FROM node:18-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with cache mounted
-RUN --mount=type=cache,target=/root/.npm \
+# Install dependencies with correct cache mount syntax
+RUN --mount=type=cache,id=npm,target=/root/.npm \
     npm ci
 
 # Copy source files
@@ -28,7 +27,8 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server.js ./
 
 # Install only production dependencies
-RUN npm ci --only=production
+RUN --mount=type=cache,id=npm,target=/root/.npm \
+    npm ci --only=production
 
 # Set environment
 ENV NODE_ENV=production
