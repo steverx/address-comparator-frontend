@@ -18,23 +18,22 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
             const formData = new FormData();
             formData.append('file', file);
             try {
-                // Log the file being processed
                 console.log('Fetching columns for file:', file.name);
 
-                const data = await apiRequest('columns', formData);
-                
-                // Log the received columns
-                console.log('Received columns:', data.columns);
+                const response = await apiRequest('columns', formData);
+                console.log('Response from server:', response);
 
-                setColumns(data.columns || []);
+                const columns = response.data || [];
+                console.log('Processed columns:', columns);
 
-                // Initialize selectedColumns
-                if (data.columns && data.columns.length > 0) {
-                    const addressColumns = data.columns.filter(col =>
+                setColumns(columns);
+
+                if (columns && columns.length > 0) {
+                    const addressColumns = columns.filter(col =>
                         col.toLowerCase().includes('address') ||
                         col.toLowerCase().includes('street')
                     );
-                    setSelectedColumns([addressColumns[0] || data.columns[0]]);
+                    setSelectedColumns([addressColumns[0] || columns[0]]);
                 } else {
                     setSelectedColumns([]);
                 }
@@ -146,7 +145,6 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                     {file1 && (
                         <p className="mt-1 text-sm text-gray-500">Selected: {file1.name}</p>
                     )}
-                    {/* Column Selectors - Conditionally Render */}
                     {columns1 !== null && (
                         <div className="mt-4 space-y-2">
                             {selectedColumns1.map((col, idx) => (
@@ -196,7 +194,6 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                     {file2 && (
                         <p className="mt-1 text-sm text-gray-500">Selected: {file2.name}</p>
                     )}
-                    {/* Column Selectors - Conditionally Render*/}
                     {columns2 !== null && (
                         <div className="mt-4 space-y-2">
                             {selectedColumns2.map((col, idx) => (
