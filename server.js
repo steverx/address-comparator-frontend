@@ -96,6 +96,9 @@ app.use(express.static(path.join(__dirname, 'build'), {
     lastModified: true,
     setHeaders: (res, path) => {
         res.set('X-Content-Type-Options', 'nosniff');
+        if (path.endsWith('.html')) {
+            res.set('Content-Disposition', 'inline');
+        }
     }
 }));
 
@@ -113,6 +116,11 @@ app.use((err, req, res, next) => {
 // SPA route with error handling
 app.get('*', (req, res, next) => {
     const indexPath = path.join(__dirname, 'build', 'index.html');
+    res.set({
+        'Content-Type': 'text/html',
+        'Content-Disposition': 'inline',
+        'X-Content-Type-Options': 'nosniff'
+    });
     res.sendFile(indexPath, err => {
         if (err) {
             console.error('Error serving index.html:', err);
