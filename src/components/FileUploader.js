@@ -23,25 +23,33 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                 const response = await apiRequest('columns', formData);
                 console.log('Response from server:', response);
 
-                const columns = response.data || [];
-                console.log('Processed columns:', columns);
+                if (response.status === 'success' && Array.isArray(response.data)) {
+                    const columns = response.data;
+                    console.log('Processed columns:', columns);
 
-                setColumns(columns);
+                    setColumns(columns);
 
-                if (columns && columns.length > 0) {
+                    // Find address-related columns
                     const addressColumns = columns.filter(col =>
                         col.toLowerCase().includes('address') ||
                         col.toLowerCase().includes('street')
                     );
-                    setSelectedColumns([addressColumns[0] || columns[0]]);
-                } else {
-                    setSelectedColumns([]);
-                }
 
+                    // Set initial selected column
+                    if (addressColumns.length > 0) {
+                        setSelectedColumns([addressColumns[0]]);
+                    } else if (columns.length > 0) {
+                        setSelectedColumns([columns[0]]);
+                    } else {
+                        setSelectedColumns([]);
+                    }
+                } else {
+                    throw new Error('Invalid response format from server');
+                }
             } catch (error) {
                 console.error('Error fetching columns:', error);
                 setError(`Error: ${error.message}`);
-                setColumns(null);
+                setColumns([]);
                 setSelectedColumns([]);
             }
         }
@@ -68,8 +76,12 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
         setError(null);
         if (event.target.id === 'file1') {
             setFile1(file);
+            setColumns1(null);
+            setSelectedColumns1([]);
         } else if (event.target.id === 'file2') {
             setFile2(file);
+            setColumns2(null);
+            setSelectedColumns2([]);
         }
     };
 
@@ -77,6 +89,7 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
         const newSelectedColumns = [...currentSelectedColumns];
         newSelectedColumns[index] = event.target.value;
         setSelectedColumns(newSelectedColumns);
+        setError(null); // Clear any previous errors
     };
 
     const addColumnSelector = (setSelectedColumns, currentSelectedColumns) => {
@@ -93,37 +106,31 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
         setSelectedColumns(newSelectedColumns);
     };
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
+    const validateSelections = () => {
         if (!file1 || !file2) {
             setError('Please select both files');
-            return;
+            return false;
         }
-        if (selectedColumns1.length === 0 || selectedColumns2.length === 0) {
+        if (!selectedColumns1.length || !selectedColumns2.length) {
             setError('Please select at least one column for each file');
-            return;
+            return false;
         }
         if (selectedColumns1.includes('') || selectedColumns2.includes('')) {
             setError('Please select valid columns');
-            return;
+            return false;
         }
+        return true;
+    };
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        if (!validateSelections()) return;
         onCompare(file1, file2, selectedColumns1, selectedColumns2, threshold, parser);
     };
 
     const handleExportSubmit = (event) => {
         event.preventDefault();
-        if (!file1 || !file2) {
-            setError('Please select both files');
-            return;
-        }
-        if (selectedColumns1.length === 0 || selectedColumns2.length === 0) {
-            setError('Please select at least one column for each file');
-            return;
-        }
-        if (selectedColumns1.includes('') || selectedColumns2.includes('')) {
-            setError('Please select valid columns');
-            return;
-        }
+        if (!validateSelections()) return;
         onExport(file1, file2, selectedColumns1, selectedColumns2, threshold, parser);
     };
 
@@ -145,7 +152,7 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                     {file1 && (
                         <p className="mt-1 text-sm text-gray-500">Selected: {file1.name}</p>
                     )}
-                    {columns1 !== null && (
+                    {columns1 && (
                         <div className="mt-4 space-y-2">
                             {selectedColumns1.map((col, idx) => (
                                 <div key={`file1-column-${idx}`} className="flex gap-2">
@@ -194,7 +201,7 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                     {file2 && (
                         <p className="mt-1 text-sm text-gray-500">Selected: {file2.name}</p>
                     )}
-                    {columns2 !== null && (
+                    {columns2 && (
                         <div className="mt-4 space-y-2">
                             {selectedColumns2.map((col, idx) => (
                                 <div key={`file2-column-${idx}`} className="flex gap-2">
