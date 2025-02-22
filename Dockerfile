@@ -1,9 +1,6 @@
 # Build stage
 FROM node:18-alpine as builder
 
-# Add Python and build tools
-RUN apk add --no-cache python3 make g++
-
 WORKDIR /app
 
 # Copy package files
@@ -26,12 +23,11 @@ WORKDIR /app
 # Copy built assets
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/server.js ./
 
 # Install only production dependencies
 RUN npm install --omit=dev
 
-EXPOSE 3000
+EXPOSE 8080
 
-# Use serve to host the static files
-RUN npm install -g serve
-CMD ["serve", "-s", "build", "-l", "3000"]
+CMD ["npm", "start"]
