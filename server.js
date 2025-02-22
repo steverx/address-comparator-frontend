@@ -16,9 +16,14 @@ app.set('x-powered-by', false);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Basic middleware for logging
+// Basic request logging
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  const start = Date.now();
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  
+  res.on('finish', () => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - ${res.statusCode} - ${Date.now() - start}ms`);
+  });
   next();
 });
 
@@ -60,14 +65,14 @@ if (process.env.NODE_ENV === 'development') {
     }));
 }
 
-// Health check endpoint - MUST come before static files
+// Health check endpoint - MUST BE FIRST
 app.get('/health', (req, res) => {
-    console.log('Health check requested');
-    res.status(200).json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        port: process.env.PORT || DEFAULT_PORT
-    });
+  console.log('Health check requested');
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
 // Debug endpoint
