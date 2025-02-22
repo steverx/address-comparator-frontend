@@ -12,11 +12,11 @@ function App() {
   const handleCompare = useCallback(async (file1, file2, selectedColumns1, selectedColumns2, threshold, parser) => {
     setLoading(true);
     setError(null);
-    setSuccess(null);
+    setSuccess(null);  // Clear previous success message
     setResults([]);
 
     try {
-      // Log the incoming data
+      // Log the incoming data (optional, for debugging)
       console.log('Compare request:', {
         files: [file1?.name, file2?.name],
         columns1: selectedColumns1,
@@ -28,73 +28,80 @@ function App() {
       const formData = new FormData();
       formData.append('file1', file1);
       formData.append('file2', file2);
-      
-      // Fix: Use correct field names for columns
+
+      // Use correct field names for columns (important for backend parsing)
       selectedColumns1.forEach(col => formData.append('columns1[]', col));
       selectedColumns2.forEach(col => formData.append('columns2[]', col));
-      
+
       formData.append('threshold', threshold);
       formData.append('parser', parser);
 
-      const data = await apiRequest('compare', formData);
-      
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid response format from server');
+      const response = await apiRequest('compare', formData);
+
+      // Validate response format
+      if (!response || typeof response !== 'object') {
+        throw new Error('Invalid response format: expected object');
       }
 
-      setResults(data);
-      setSuccess('Comparison completed successfully');
+      if (response.status !== 'success' || !Array.isArray(response.data)) {
+        throw new Error(response.error || 'Invalid response format from server');
+      }
+        // Access response.data, not just data as variable
+      setResults(response.data);
+      setSuccess(`Found ${response.data.length} matches`); // Show number of matches
+
+
     } catch (err) {
       console.error('Comparison failed:', err);
       setError(err.message);
-      setResults([]);
+      // No need to setResults([]) here, as it's already done at the beginning.
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // No dependencies needed here, as all arguments are passed directly
 
   const handleExport = useCallback(async (file1, file2, selectedColumns1, selectedColumns2, threshold, parser) => {
     setLoading(true);
     setError(null);
-    setSuccess(null);
+    setSuccess(null); // Clear previous success.
 
     try {
       const formData = new FormData();
       formData.append('file1', file1);
       formData.append('file2', file2);
-      
-      // Fix: Use correct field names for columns
+
       selectedColumns1.forEach(col => formData.append('columns1[]', col));
       selectedColumns2.forEach(col => formData.append('columns2[]', col));
-      
+
       formData.append('threshold', threshold);
       formData.append('parser', parser);
-      formData.append('export', 'true');
+      formData.append('export', 'true'); // Indicate export request
 
-      const { blob, filename } = await apiRequest('compare', formData, true);
-      
+      const { blob, filename } = await apiRequest('compare', formData, true); // isBlob = true
+
       if (!blob) {
         throw new Error('No data received from server');
       }
 
-      // Trigger file download
+      // Trigger file download (browser handles this)
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename || 'comparison_results.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
+      a.download = filename || 'comparison_results.xlsx';  // Use filename from server or default
+      document.body.appendChild(a); // Append to DOM
+      a.click(); // Simulate click to trigger download
+      window.URL.revokeObjectURL(url); // Clean up
       a.remove();
 
       setSuccess('File exported successfully');
+
     } catch (err) {
       console.error('Export failed:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // No dependencies needed
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -124,9 +131,9 @@ function App() {
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="p-6 border-b border-gray-200">
-            <FileUploader 
-              onCompare={handleCompare} 
-              onExport={handleExport} 
+            <FileUploader
+              onCompare={handleCompare}
+              onExport={handleExport}
               setError={setError}
               loading={loading}
             />
