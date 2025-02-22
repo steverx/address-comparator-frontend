@@ -1,13 +1,18 @@
 [build]
-builder = "DOCKERFILE"
-dockerfile = "Dockerfile"
+builder = "NIXPACKS"
 
 [deploy]
-startCommand = "node server.js"
-healthcheck = "/health"
+startCommand = "npm start"
+healthcheckPath = "/health"
 healthcheckTimeout = 10
 healthcheckInterval = 10
+restartPolicyType = "ON_FAILURE"
 
 [[ports]]
-port = "3000"
+port = "8080"
 protocol = "http"
+
+[variables]
+PORT = "8080"
+NODE_ENV = "production"
+REACT_APP_API_URL = "https://address-comparator-backend-production.up.railway.app"

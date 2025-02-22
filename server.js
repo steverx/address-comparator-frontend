@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 let PORT = parseInt(process.env.PORT || '8080', 10);
@@ -39,6 +40,17 @@ app.use((req, res, next) => {
     });
     next();
 });
+
+// Add proxy middleware for API requests
+if (process.env.NODE_ENV === 'development') {
+    app.use('/api', createProxyMiddleware({
+        target: process.env.REACT_APP_API_URL,
+        changeOrigin: true,
+        pathRewrite: {
+            '^/api': ''
+        }
+    }));
+}
 
 // Health check with enhanced info
 app.get('/health', (req, res) => {
@@ -154,6 +166,8 @@ const startServer = (retries = 3) => {
             networkInterfaces: require('os').networkInterfaces(),
         };
         console.log('Server configuration:', serverInfo);
+        console.log(`Server is running on port ${PORT}`);
+        console.log(`API URL: ${process.env.REACT_APP_API_URL}`);
     }).on('error', (error) => {
         if (error.code === 'EADDRINUSE' && retries > 0) {
             console.log(`Port ${PORT} in use, retrying on port ${PORT + 1}...`);
