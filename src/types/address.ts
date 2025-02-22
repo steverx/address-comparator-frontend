@@ -2,14 +2,22 @@ export interface AddressData {
   [key: string]: string;
 }
 
-export interface ComparisonResult {
-  original_row: AddressData;
-  matches: Array<{
+export interface AddressMatch {
     raw_address: string;
     member_id: string;
     lic: string;
     match_score: number;
-  }>;
+}
+
+export interface ComparisonResult {
+    original_row: Record<string, string>;
+    matches: AddressMatch[];
+}
+
+export interface ComparisonRequest {
+    sourceFile: Record<string, string>[];
+    columns: string[];
+    threshold: number;
 }
 
 export interface AddressComparisonResult {
