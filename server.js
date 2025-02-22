@@ -54,7 +54,12 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check with enhanced info
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
+    console.log('Health check requested');
+    res.status(200).json({ 
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
 });
 
 // Debug endpoint

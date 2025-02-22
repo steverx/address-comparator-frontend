@@ -4,9 +4,10 @@ builder = "NIXPACKS"
 [deploy]
 startCommand = "npm start"
 healthcheckPath = "/health"
-healthcheckTimeout = 30
-healthcheckInterval = 15
+healthcheckTimeout = 60
+healthcheckInterval = 30
 restartPolicyType = "ON_FAILURE"
+healthcheckProtocol = "http"
 
 [[ports]]
 port = "8080"
