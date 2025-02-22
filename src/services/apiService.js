@@ -1,59 +1,82 @@
-// src/services/apiService.js
 export const apiRequest = async (endpoint, data, isBlob = false) => {
-    const API_URL = process.env.REACT_APP_API_URL || 'https://address-comparator-backend-production.up.railway.app';
-    const url = `${API_URL}/${endpoint}`;
-  
-    try {
-      console.log(`Making request to: ${url}`);
-  
-      const response = await fetch(url, {
-        method: 'POST',
-        body: data,
-        // No need to set mode: 'cors' or credentials: 'include' if you aren't dealing with
-        // cross-origin requests that require credentials.  If you ARE, then include them.
-        // But for a standard API on the same origin or one that properly handles CORS,
-        // these aren't needed.
-        // headers: {  // Don't set 'Accept': 'application/json' when sending FormData
-        //   'Accept': 'application/json',  // The *response* might be JSON, but you're sending FormData
-        // }
+  const API_URL = process.env.REACT_APP_API_URL || 'https://address-comparator-backend-production.up.railway.app';
+  const url = `${API_URL}/${endpoint}`;
+
+  try {
+      console.log(`Making request to: ${url}`, {
+          endpoint,
+          dataType: data instanceof FormData ? 'FormData' : typeof data,
+          isBlob
       });
-  
-      if (!response.ok) {
-        // Attempt to parse as JSON, but fall back to text if it fails.  This handles
-        // cases where the server sends back an error that isn't JSON formatted.
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (jsonError) {
-          // If parsing as JSON fails, get the raw text.
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status} - ${errorText || response.statusText}`);
-        }
-        // If we got JSON, use the 'error' property if it exists, otherwise the whole response.
-        throw new Error(errorData.error || `HTTP error! status: ${response.status} - ${JSON.stringify(errorData)}`);
-      }
-  
-  
-      if (isBlob) {
-        const blob = await response.blob();
-        // More robust Content-Disposition parsing: handles quotes, semicolons, etc.
-        const contentDisposition = response.headers.get('Content-Disposition');
-        let filename = 'download.xlsx'; // Default filename
-        if (contentDisposition) {
-          const filenameRegex = /filename\*=UTF-8''([\w%\-.]+)|filename="([^"]*)"|filename=([^;]*)/;
-          const match = contentDisposition.match(filenameRegex);
-          if (match && (match[1] || match[2] || match[3])) {
-            filename = decodeURIComponent(match[1] || match[2] || match[3]).trim(); // Decode URI-encoded filenames
+
+      const response = await fetch(url, {
+          method: 'POST',
+          body: data,
+          headers: {
+              // Only set Accept header if not sending FormData
+              ...(!(data instanceof FormData) && {
+                  'Accept': 'application/json'
+              })
           }
-        }
-        return { blob, filename };
+      });
+
+      // Enhanced error handling
+      if (!response.ok) {
+          let errorMessage;
+          try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorData.message || JSON.stringify(errorData);
+          } catch (jsonError) {
+              const errorText = await response.text();
+              errorMessage = errorText || response.statusText;
+          }
+          
+          throw new Error(`Request failed: ${response.status} - ${errorMessage}`);
       }
-  
+
+      // Handle blob responses
+      if (isBlob) {
+          const blob = await response.blob();
+          const filename = parseContentDisposition(response.headers.get('Content-Disposition'));
+          return { blob, filename };
+      }
+
+      // Handle JSON responses
       const responseData = await response.json();
-      console.log(`Response from ${endpoint}:`, responseData);
+      
+      // Validate response structure
+      if (!responseData || typeof responseData !== 'object') {
+          throw new Error('Invalid response format: expected JSON object');
+      }
+      
+      // Log successful response
+      console.log(`Response from ${endpoint}:`, {
+          status: responseData.status,
+          hasData: Boolean(responseData.data),
+          metadata: responseData.metadata
+      });
+      
       return responseData;
-    } catch (error) {
-      console.error(`API request failed (${endpoint}):`, error);
-      throw error; // Re-throw the error so the calling function can handle it.
-    }
-  };
+      
+  } catch (error) {
+      console.error(`API request failed (${endpoint}):`, {
+          error: error.message,
+          stack: error.stack
+      });
+      throw error;
+  }
+};
+
+// Helper function to parse Content-Disposition header
+const parseContentDisposition = (header) => {
+  if (!header) return 'download.xlsx';
+
+  const filenameRegex = /filename\*=UTF-8''([\w%\-.]+)|filename="([^"]*)"|filename=([^;]*)/;
+  const match = header.match(filenameRegex);
+  
+  if (match && (match[1] || match[2] || match[3])) {
+      return decodeURIComponent(match[1] || match[2] || match[3]).trim();
+  }
+  
+  return 'download.xlsx';
+};
