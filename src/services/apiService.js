@@ -3,19 +3,23 @@ export const apiRequest = async (endpoint, data, isBlob = false) => {
     const url = `${API_URL}/${endpoint}`;
 
     try {
-        console.log(`Making request to: ${url}`, {
+        // Log request details - Improved logging for FormData
+        console.log('API Request:', {
+            url,
             endpoint,
             dataType: data instanceof FormData ? 'FormData' : typeof data,
-            isBlob
+            formDataKeys: data instanceof FormData ? [...data.keys()] : null, // Log FormData keys
+            isBlob // Log whether it's a blob request
         });
 
         const response = await fetch(url, {
             method: 'POST',
             body: data,
             headers: {
-                // Only set Accept header if not sending FormData
+                // Only set Accept and Content-Type if NOT sending FormData
                 ...(!(data instanceof FormData) && {
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json' // Set Content-Type for JSON requests
                 })
             }
         });
@@ -37,10 +41,11 @@ export const apiRequest = async (endpoint, data, isBlob = false) => {
             throw new Error(`Request failed: ${response.status} - ${errorMessage}`);
         }
 
-        // Handle blob responses
+        // Handle blob responses (BEFORE trying to parse JSON)
         if (isBlob) {
             const blob = await response.blob();
             const filename = parseContentDisposition(response.headers.get('Content-Disposition'));
+            console.log(`Response from ${endpoint} (blob):`, { filename }); // Log blob response
             return { blob, filename };
         }
 
@@ -55,23 +60,26 @@ export const apiRequest = async (endpoint, data, isBlob = false) => {
         if (responseData.status === "error") {
             throw new Error(responseData.error || "An unknown error occurred.");
         }
-        if (endpoint === 'compare' && !Array.isArray(responseData.data)){
-             throw new Error('Invalid response format: expected data to be an array');
+        if (endpoint === 'compare' && !Array.isArray(responseData.data)) {
+            throw new Error('Invalid response format: expected data to be an array');
         }
+
 
         // Log successful response *after* all validation.
         console.log(`Response from ${endpoint}:`, {
             status: responseData.status,  // Log the status
             hasData: Boolean(responseData.data), // Check if data exists
-            metadata: responseData.metadata // Log any metadata
+            metadata: responseData.metadata, // Log any metadata
+            dataLength: Array.isArray(responseData.data) ? responseData.data.length : null //log data length
         });
 
         return responseData;
 
     } catch (error) {
-        console.error(`API request failed (${endpoint}):`, {
-            error: error.message,  // Log only the error message
-            stack: error.stack     // Log the stack trace for debugging
+        console.error('API Request Failed:', {
+            endpoint,
+            error: error.message,
+            stack: error.stack
         });
         throw error; // Re-throw the error so the caller can handle it.
     }
