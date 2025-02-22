@@ -14,6 +14,12 @@ app.set('x-powered-by', false);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Basic middleware for logging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
+
 // Enhanced request logging
 app.use((req, res, next) => {
     const startTime = Date.now();
@@ -54,12 +60,17 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check with enhanced info
 app.get('/health', (req, res) => {
-    console.log('Health check requested');
-    res.status(200).json({ 
+    const healthData = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
+        port: process.env.PORT,
+        env: process.env.NODE_ENV,
+        memory: process.memoryUsage(),
         uptime: process.uptime()
-    });
+    };
+    
+    console.log('Health check response:', healthData);
+    res.status(200).json(healthData);
 });
 
 // Debug endpoint
