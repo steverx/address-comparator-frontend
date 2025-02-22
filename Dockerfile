@@ -2,15 +2,16 @@
 FROM node:18-alpine as builder
 
 # Add Python and build tools
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ git
 
 WORKDIR /app
 
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies with legacy peer deps
-RUN npm ci --legacy-peer-deps
+# Install dependencies with clean cache
+RUN npm cache clean --force && \
+    npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -20,7 +21,7 @@ ENV CI=false
 ENV NODE_ENV=production
 
 # Build application with increased memory limit
-RUN NODE_OPTIONS=--max_old_space_size=4096 npm run build
+RUN npm run build || (cat /root/.npm/_logs/*-debug.log && exit 1)
 
 # Production stage
 FROM node:18-alpine
@@ -33,7 +34,7 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server.js ./
 
 # Install production dependencies
-RUN npm ci --only=production --legacy-peer-deps
+RUN npm install --production --legacy-peer-deps
 
 EXPOSE 8080
 

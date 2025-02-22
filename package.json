@@ -15,7 +15,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "build": "CI=false react-scripts build",
+    "build": "GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test",
     "dev": "react-scripts start"
   },
@@ -24,7 +24,8 @@
       "react-app"
     ],
     "rules": {
-      "@typescript-eslint/no-unused-vars": "warn"
+      "@typescript-eslint/no-unused-vars": "warn",
+      "no-console": "warn"
     }
   },
   "browserslist": {
