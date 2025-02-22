@@ -1,7 +1,7 @@
 # Build stage
 FROM node:18-alpine as builder
 
-# Add Python and build tools for any native dependencies
+# Add Python and build tools
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
@@ -9,8 +9,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with legacy peer deps flag
-RUN npm ci --legacy-peer-deps
+# Install ALL dependencies (including dev dependencies)
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -23,16 +23,15 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy built assets and necessary files
+# Copy built assets
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/server.js ./
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Install only production dependencies
+RUN npm install --omit=dev
 
-# Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Use serve to host the static files
+RUN npm install -g serve
+CMD ["serve", "-s", "build", "-l", "3000"]

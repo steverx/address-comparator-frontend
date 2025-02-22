@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { AddressComparisonResult } from '../types/fileUploader.types';
+import { AddressComparisonResult, MatchResult } from '../types/address';
 import { utils, writeFile } from 'xlsx';
 
 interface ResultsTableProps {
@@ -76,6 +76,19 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
     }
         const validKeys: (keyof AddressComparisonResult)[] = ['source_address', 'matched_address', 'match_score'];
 
+    const exportToExcel = (data: AddressComparisonResult[]) => {
+        const exportData = data.map(result => ({
+            source_address: result.source_address,
+            matched_address: result.matched_address,
+            match_score: result.match_score
+        }));
+
+        const wb = utils.book_new();
+        const ws = utils.json_to_sheet(exportData);
+        utils.book_append_sheet(wb, ws, 'Address Matches');
+        writeFile(wb, 'address_matches.xlsx');
+    };
+
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -136,35 +149,6 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
         </div>
       </div>
     );
-};
-
-interface MatchResult {
-    original_row: Record<string, any>;
-    matches: Array<{
-        matched_address: string;
-        member_id: string;
-        lic: string;
-        member_name: string;
-        match_score: number;
-    }>;
-}
-
-const exportToExcel = (results: MatchResult[]) => {
-    const exportData = results.flatMap(result => 
-        result.matches.map(match => ({
-            ...result.original_row,
-            matched_address: match.matched_address,
-            member_id: match.member_id,
-            lic: match.lic,
-            member_name: match.member_name,
-            match_score: match.match_score
-        }))
-    );
-
-    const wb = utils.book_new();
-    const ws = utils.json_to_sheet(exportData);
-    utils.book_append_sheet(wb, ws, 'Address Matches');
-    writeFile(wb, 'address_matches.xlsx');
 };
 
 export default ResultsTable;
