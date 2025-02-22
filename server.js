@@ -61,6 +61,10 @@ if (process.env.NODE_ENV === 'development') {
         changeOrigin: true,
         pathRewrite: {
             '^/api': ''
+        },
+        onError: (err, req, res) => {
+            console.error('Proxy Error:', err);
+            res.status(500).json({ error: 'Proxy Error' });
         }
     }));
 }

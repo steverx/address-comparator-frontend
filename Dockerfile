@@ -40,7 +40,7 @@ COPY --from=builder /app/build ./build
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server.js ./
 
-# Install production dependencies
+# Install production dependencies including http-proxy-middleware
 RUN npm install --production
 
 EXPOSE 8080
