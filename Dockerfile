@@ -3,16 +3,16 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies required for building
+# Install build dependencies
 RUN apk add --no-cache \
     python3 \
     make \
     g++
 
-# Copy package files for better layer caching
+# Copy package files
 COPY package*.json ./
 
-# Install dependencies with clean cache
+# Install dependencies
 RUN npm cache clean --force && \
     npm install
 
@@ -25,39 +25,29 @@ ENV NODE_ENV=production \
     DISABLE_ESLINT_PLUGIN=true \
     GENERATE_SOURCEMAP=false
 
-# Build React app with detailed error output
-RUN npm run build 2>&1 | tee build.log || \
-    (echo "Build failed. Full log:" && cat build.log && exit 1)
+# Build React app and verify output
+RUN npm run build && \
+    ls -la build/ && \
+    test -f build/index.html || (echo "index.html not found!" && exit 1)
 
 # Production stage
 FROM node:18-alpine
 
-# Create non-root user
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
-
 WORKDIR /app
 
-# Copy build artifacts and config
+# Copy only necessary files
 COPY --from=builder /app/build/ ./build/
 COPY --from=builder /app/package*.json ./
 COPY server.js ./
 
-# Install production dependencies and curl for health checks
-RUN apk add --no-cache curl && \
-    npm install --production && \
-    chown -R appuser:appgroup /app
+# Verify files after copy
+RUN ls -la build/ && \
+    test -f build/index.html || (echo "index.html not copied!" && exit 1)
 
-# Set runtime environment
-ENV NODE_ENV=production \
-    PORT=8080
-
-# Switch to non-root user
-USER appuser
+# Install production dependencies
+RUN npm install --production
 
 EXPOSE 8080
-
-HEALTHCHECK --interval=30s --timeout=3s \
-    CMD curl -f http://localhost:8080/health || exit 1
+ENV PORT=8080
 
 CMD ["node", "server.js"]
