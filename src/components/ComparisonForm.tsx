@@ -10,6 +10,7 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
   const [columns, setColumns] = useState<string[]>([]);
   const [threshold, setThreshold] = useState(80);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -31,6 +32,7 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
     if (!file) return;
 
     setLoading(true);
+    setError(null);
     try {
       const reader = new FileReader();
       reader.onload = async (e) => {
@@ -53,6 +55,7 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
       };
       reader.readAsText(file);
     } catch (error) {
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
       console.error('Comparison error:', error);
     } finally {
       setLoading(false);
@@ -60,41 +63,48 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Upload Address File
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
-            className="mt-1 block w-full"
-          />
-        </label>
-      </div>
+    <div className="mt-4">
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Upload Address File
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="mt-1 block w-full"
+            />
+          </label>
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Match Threshold ({threshold}%)
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={threshold}
-            onChange={(e) => setThreshold(Number(e.target.value))}
-            className="mt-1 block w-full"
-          />
-        </label>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Match Threshold ({threshold}%)
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+              className="mt-1 block w-full"
+            />
+          </label>
+        </div>
 
-      <button
-        type="submit"
-        disabled={!file || loading}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-      >
-        {loading ? 'Comparing...' : 'Compare with Database'}
-      </button>
-    </form>
+        <button
+          type="submit"
+          disabled={!file || loading}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+        >
+          {loading ? 'Comparing...' : 'Compare with Database'}
+        </button>
+      </form>
+    </div>
   );
 };
 

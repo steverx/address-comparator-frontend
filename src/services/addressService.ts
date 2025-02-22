@@ -20,17 +20,23 @@ export interface ComparisonResponse {
 }
 
 export async function compareAddresses(request: ComparisonRequest): Promise<ComparisonResponse> {
-  const response = await fetch(`${endpoints.compare}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(request)
-  });
+  try {
+    const response = await fetch(`${endpoints.compare}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(request)
+    });
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Address comparison error:', error);
+    throw new Error('Failed to compare addresses. Please try again later.');
   }
-
-  return response.json();
 }

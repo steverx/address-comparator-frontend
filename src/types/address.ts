@@ -1,13 +1,15 @@
-export interface AddressMatch {
+export interface AddressData {
+  [key: string]: string;
+}
+
+export interface ComparisonResult {
+  original_row: AddressData;
+  matches: Array<{
     raw_address: string;
     member_id: string;
     lic: string;
     match_score: number;
-}
-
-export interface MatchResult {
-    original_row: Record<string, any>;
-    matches: AddressMatch[];
+  }>;
 }
 
 export interface AddressComparisonResult {

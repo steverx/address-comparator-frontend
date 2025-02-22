@@ -2,9 +2,11 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { createServer } = require('http');
 
 const app = express();
-let PORT = parseInt(process.env.PORT || '8080', 10);
+const DEFAULT_PORT = 8080;
+let PORT = parseInt(process.env.PORT || DEFAULT_PORT.toString(), 10);
 
 // Trust Railway's proxy and enable keep-alive
 app.set('trust proxy', 1);
@@ -60,10 +62,11 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check endpoint - MUST come before static files
 app.get('/health', (req, res) => {
-    console.log('Health check requested:', new Date().toISOString());
+    console.log('Health check requested');
     res.status(200).json({
         status: 'healthy',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        port: process.env.PORT || DEFAULT_PORT
     });
 });
 
@@ -126,10 +129,18 @@ app.use((err, req, res, next) => {
 });
 
 // Enhanced server startup with port retry
-const startServer = (retries = 3) => {
-    const server = app.listen(PORT, '0.0.0.0', () => {
+const startServer = async (port) => {
+    const server = createServer(app);
+  
+    try {
+        await new Promise((resolve, reject) => {
+            server.listen(port, '0.0.0.0');
+            server.once('listening', resolve);
+            server.once('error', reject);
+        });
+        
         const serverInfo = {
-            port: PORT,
+            port: port,
             env: process.env.NODE_ENV,
             domain: process.env.RAILWAY_PUBLIC_DOMAIN,
             pid: process.pid,
@@ -141,24 +152,18 @@ const startServer = (retries = 3) => {
             networkInterfaces: require('os').networkInterfaces(),
         };
         console.log('Server configuration:', serverInfo);
-        console.log(`Server is running on port ${PORT}`);
+        console.log(`Server is running on port ${port}`);
         console.log(`API URL: ${process.env.REACT_APP_API_URL}`);
-    }).on('error', (error) => {
-        if (error.code === 'EADDRINUSE' && retries > 0) {
-            console.log(`Port ${PORT} in use, retrying on port ${PORT + 1}...`);
-            server.close();
-            PORT += 1;
-            startServer(retries - 1);
+        
+    } catch (error) {
+        if (error.code === 'EADDRINUSE') {
+            console.log(`Port ${port} in use, trying ${port + 1}...`);
+            await startServer(port + 1);
         } else {
-            console.error('Server failed to start:', {
-                error: error.message,
-                code: error.code,
-                port: PORT,
-                time: new Date().toISOString()
-            });
+            console.error('Server error:', error);
             process.exit(1);
         }
-    });
+    }
 
     // Configure keep-alive
     server.keepAliveTimeout = 30000;
@@ -167,7 +172,7 @@ const startServer = (retries = 3) => {
     return server;
 };
 
-const server = startServer();
+const server = startServer(PORT);
 
 // Enhanced graceful shutdown
 process.on('SIGTERM', () => {

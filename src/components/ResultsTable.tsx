@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { AddressComparisonResult, MatchResult } from '../types/address';
 import { utils, writeFile } from 'xlsx';
+// Remove unused MatchResult import if not needed
+import type { AddressComparisonResult } from '../types/address';
 
 interface ResultsTableProps {
     results: AddressComparisonResult[];

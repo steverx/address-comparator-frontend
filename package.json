@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^16.18.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "express": "^4.21.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.18.2",
+    "file-saver": "^2.0.5",
     "http-proxy-middleware": "^3.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -16,8 +19,10 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "start": "node server.js",
-    "build": "react-scripts build"
+    "start": "PORT=8080 node server.js",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "dev": "react-scripts start"
   },
   "eslintConfig": {
     "extends": [
