@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "node server.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
 healthcheckInterval = 15
@@ -18,4 +18,3 @@ internalPort = "8080"
 [variables]
 PORT = "8080"
 NODE_ENV = "production"
-REACT_APP_API_URL = "https://address-comparator-backend-production.up.railway.app"

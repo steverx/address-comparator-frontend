@@ -10,7 +10,7 @@ let PORT = parseInt(process.env.PORT || '8080', 10);
 app.set('trust proxy', 1);
 app.set('x-powered-by', false);
 
-// Basic middleware
+// Enable JSON parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -58,7 +58,7 @@ if (process.env.NODE_ENV === 'development') {
     }));
 }
 
-// Health check with enhanced info
+// Health check endpoint - MUST come before static files
 app.get('/health', (req, res) => {
     const healthData = {
         status: 'healthy',
@@ -93,7 +93,7 @@ app.get('/debug', (req, res) => {
     res.json(debugInfo);
 });
 
-// Static file serving
+// Serve static files from the React build
 app.use(express.static(path.join(__dirname, 'build'), {
     maxAge: '1h',
     etag: true,
@@ -117,7 +117,7 @@ app.use((err, req, res, next) => {
     }
 });
 
-// SPA route with error handling
+// Handle React routing
 app.get('*', (req, res, next) => {
     const indexPath = path.join(__dirname, 'build', 'index.html');
     res.set({
