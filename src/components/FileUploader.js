@@ -49,6 +49,11 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
     const [parser, setParser] = useState('usaddress');
     const [columnsInitialized1, setColumnsInitialized1] = useState(false);
     const [columnsInitialized2, setColumnsInitialized2] = useState(false);
+    const [columnsLoaded, setColumnsLoaded] = useState({ // Track loaded status
+        file1: false,
+        file2: false
+    });
+
 
     const ALLOWED_FILE_TYPES = ['.csv', '.xlsx'];
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -68,8 +73,9 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
         return { valid: true, error: null };
     }, []);
 
-    const fetchColumns = useCallback(async (file, setColumns, setSelectedColumns, isFile1) => {
-        if (!file) return;
+    const fetchColumns = useCallback(async (file, setColumns, setSelectedColumns, fileKey) => {
+        if (!file || columnsLoaded[fileKey]) return; // Prevent duplicate requests
+
         const formData = new FormData();
         formData.append('file', file);
         try {
@@ -83,7 +89,7 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                 setColumns(columns);
 
                 // Only set initial columns if not already initialized
-                if ((isFile1 && !columnsInitialized1) || (!isFile1 && !columnsInitialized2)) {
+                if ((fileKey === 'file1' && !columnsInitialized1) || (fileKey === 'file2' && !columnsInitialized2)) {
                     const addressColumns = columns.filter(col => {
                         const colLower = col.toLowerCase();
                         return (
@@ -103,14 +109,13 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                         console.log('No address columns found, using first column');
                         setSelectedColumns(columns.length > 0 ? [columns[0]] : []);
                     }
-
-                    // Mark as initialized
-                    if (isFile1) {
-                        setColumnsInitialized1(true);
-                    } else {
-                        setColumnsInitialized2(true);
-                    }
                 }
+
+                 // Mark as loaded, *after* successfully fetching and processing
+                setColumnsLoaded(prev => ({
+                    ...prev,
+                    [fileKey]: true
+                }));
             } else {
                 throw new Error('Invalid response format from server');
             }
@@ -119,36 +124,39 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
             setError(`Error fetching columns: ${error.message}`);
             setColumns(null);
             setSelectedColumns([]);
+             // Don't set columnsLoaded on error
         }
-    }, [setError, columnsInitialized1, columnsInitialized2]);
+    }, [setError, columnsInitialized1, columnsInitialized2, columnsLoaded]);
 
 
     useEffect(() => {
-        if (file1) fetchColumns(file1, setColumns1, setSelectedColumns1, true);
-        if (file2) fetchColumns(file2, setColumns2, setSelectedColumns2, false);
+        if (file1) fetchColumns(file1, setColumns1, setSelectedColumns1, 'file1');
+        if (file2) fetchColumns(file2, setColumns2, setSelectedColumns2, 'file2');
     }, [file1, file2, fetchColumns]);
 
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
-        const validationResult = validateFile(file);  // Use the validation function
+        const validationResult = validateFile(file);
         if (!validationResult.valid) {
             setError(validationResult.error);
-            event.target.value = ''; // Clear the file input
+            event.target.value = '';
             return;
         }
 
-        setError(null); // Clear any previous error
+        setError(null);
         if (event.target.id === 'file1') {
             setFile1(file);
             setColumns1(null);
             setSelectedColumns1([]);
             setColumnsInitialized1(false);
+            setColumnsLoaded(prev => ({ ...prev, file1: false })); // Reset loaded status
         } else if (event.target.id === 'file2') {
             setFile2(file);
             setColumns2(null);
             setSelectedColumns2([]);
             setColumnsInitialized2(false);
+            setColumnsLoaded(prev => ({ ...prev, file2: false })); // Reset loaded status
         }
     };
 
@@ -206,7 +214,6 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
         try {
             if (!validateSelections()) return;
 
-            // Log attempt
             console.log('Attempting comparison:', {
                 files: [file1?.name, file2?.name],
                 columns: {
