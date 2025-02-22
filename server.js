@@ -54,31 +54,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check with enhanced info
 app.get('/health', (req, res) => {
-    const health = {
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        connection: {
-            protocol: req.protocol,
-            secure: req.secure,
-            ip: req.ip,
-            hostname: req.hostname,
-            proxy: req.get('x-forwarded-proto') || 'none'
-        },
-        server: {
-            port: PORT,
-            env: process.env.NODE_ENV,
-            domain: process.env.RAILWAY_PUBLIC_DOMAIN,
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            pid: process.pid
-        },
-        build: {
-            exists: fs.existsSync(path.join(__dirname, 'build')),
-            directory: path.join(__dirname, 'build')
-        }
-    };
-    console.log('Health check:', health);
-    res.status(200).json(health);
+    res.status(200).json({ status: 'ok' });
 });
 
 // Debug endpoint
