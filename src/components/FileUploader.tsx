@@ -1,132 +1,91 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '../services/apiService';
-import PropTypes from 'prop-types';
+// Remove PropTypes import, no longer needed since we use Typescript.
+// import PropTypes from 'prop-types';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { FileUploaderProps, ColumnsState, FileKey, FileValidationError, ColumnValidationError, ColumnApiResponse } from '../types/fileUploader.types'; // Import types
+import { FILE_CONFIG, PARSER_OPTIONS, type ParserOption } from '../constants/fileUploader.constants'; // Import constants
 
-class ErrorBoundary extends React.Component {
-    static propTypes = {
-        children: PropTypes.node.isRequired
-    };
 
-    constructor(props) {
-        super(props);
-        this.state = { hasError: false, errorInfo: null };
-    }
-
-    static getDerivedStateFromError(error) {
-        return { hasError: true };
-    }
-
-    componentDidCatch(error, errorInfo) {
-        console.error("ErrorBoundary caught an error:", error, errorInfo);
-        this.setState({ errorInfo });
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <div className="p-4 bg-red-50 border border-red-500 rounded">
-                    <h1 className="text-red-700 font-bold">Something went wrong</h1>
-                    {this.state.errorInfo && (
-                        <pre className="mt-2 text-sm text-red-600">
-                            {JSON.stringify(this.state.errorInfo, null, 2)}
-                        </pre>
-                    )}
-                </div>
-            );
-        }
-        return this.props.children;
-    }
-}
-
-function FileUploader({ onCompare, onExport, setError, loading }) {
-    const [file1, setFile1] = useState(null);
-    const [file2, setFile2] = useState(null);
-    const [columns1, setColumns1] = useState(null);
-    const [columns2, setColumns2] = useState(null);
-    const [selectedColumns1, setSelectedColumns1] = useState([]);
-    const [selectedColumns2, setSelectedColumns2] = useState([]);
-    const [threshold, setThreshold] = useState(80);
-    const [parser, setParser] = useState('usaddress');
-    const [columnsInitialized1, setColumnsInitialized1] = useState(false);
-    const [columnsInitialized2, setColumnsInitialized2] = useState(false);
-    const [columnsLoaded, setColumnsLoaded] = useState({ // Track loaded status
+const FileUploader: React.FC<FileUploaderProps> = ({ onCompare, onExport, setError, loading }) => {
+    const [file1, setFile1] = useState<File | null>(null);
+    const [file2, setFile2] = useState<File | null>(null);
+    const [columns1, setColumns1] = useState<string[] | null>(null);
+    const [columns2, setColumns2] = useState<string[] | null>(null);
+    const [selectedColumns1, setSelectedColumns1] = useState<string[]>([]);
+    const [selectedColumns2, setSelectedColumns2] = useState<string[]>([]);
+    const [threshold, setThreshold] = useState<number>(80);
+    const [parser, setParser] = useState<ParserOption>(PARSER_OPTIONS.USADDRESS); // Use the type and constant
+    const [columnsInitialized1, setColumnsInitialized1] = useState<boolean>(false);
+    const [columnsInitialized2, setColumnsInitialized2] = useState<boolean>(false);
+    const [columnsLoaded, setColumnsLoaded] = useState<ColumnsState>({
         file1: false,
-        file2: false
+        file2: false,
     });
 
 
-    const ALLOWED_FILE_TYPES = ['.csv', '.xlsx'];
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-    const validateFile = useCallback((file) => {
-        if (!file) return { valid: false, error: 'No file selected' };
+    const validateFile = useCallback((file: File | null) => {
+        if (!file) {
+            throw new FileValidationError(FILE_CONFIG.ERROR_MESSAGES.NO_FILE);
+        }
 
-        if (file.size > MAX_FILE_SIZE) {
-            return { valid: false, error: 'File size exceeds 10MB limit' };
+        if (file.size > FILE_CONFIG.MAX_SIZE) {
+            throw new FileValidationError(FILE_CONFIG.ERROR_MESSAGES.SIZE_EXCEED);
         }
 
         const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-        if (!ALLOWED_FILE_TYPES.includes(fileExt)) {
-            return { valid: false, error: 'Invalid file type. Please use CSV or Excel files.' };
+        if (!FILE_CONFIG.ALLOWED_TYPES.includes(fileExt as any)) { // the 'as any' is a temporary workaround.
+            throw new FileValidationError(FILE_CONFIG.ERROR_MESSAGES.INVALID_TYPE);
         }
 
         return { valid: true, error: null };
     }, []);
 
-    const fetchColumns = useCallback(async (file, setColumns, setSelectedColumns, fileKey) => {
-        if (!file || columnsLoaded[fileKey]) return; // Prevent duplicate requests
+
+    const fetchColumns = useCallback(async (file: File, setColumns: (cols: string[] | null) => void, setSelectedColumns: (cols: string[]) => void, fileKey: FileKey) => {
+        if (!file || columnsLoaded[fileKey]) return;
 
         const formData = new FormData();
         formData.append('file', file);
+
         try {
-            console.log('Fetching columns for file:', file.name);
-            const response = await apiRequest('columns', formData);
-            console.log('Response from server:', response);
+            const response: ColumnApiResponse = await apiRequest('columns', formData); // Type the response!
 
             if (response.status === 'success' && Array.isArray(response.data)) {
-                const columns = response.data;
-                console.log('Processed columns:', columns);
-                setColumns(columns);
+                setColumns(response.data);
 
-                // Only set initial columns if not already initialized
-                if ((fileKey === 'file1' && !columnsInitialized1) || (fileKey === 'file2' && !columnsInitialized2)) {
-                    const addressColumns = columns.filter(col => {
-                        const colLower = col.toLowerCase();
-                        return (
-                            colLower.includes('address') ||
-                            colLower.includes('street') ||
-                            colLower.includes('city') ||
-                            colLower.includes('state') ||
-                            colLower.includes('zip') ||
-                            colLower.includes('postal')
-                        );
-                    });
+                if (response.suggested_address_columns && response.suggested_address_columns.length > 0) {
+                    setSelectedColumns(response.suggested_address_columns);
 
-                    if (addressColumns.length > 0) {
-                        console.log('Found address columns:', addressColumns);
-                        setSelectedColumns(addressColumns);
+                    if (fileKey === 'file1') {
+                        setColumnsInitialized1(true);
                     } else {
-                        console.log('No address columns found, using first column');
-                        setSelectedColumns(columns.length > 0 ? [columns[0]] : []);
+                        setColumnsInitialized2(true);
                     }
+                } else {
+                  const firstColumn = response.data.length > 0 ? [response.data[0]] : [];
+                  setSelectedColumns(firstColumn);
                 }
 
-                 // Mark as loaded, *after* successfully fetching and processing
-                setColumnsLoaded(prev => ({
-                    ...prev,
-                    [fileKey]: true
-                }));
+                  setColumnsLoaded((prev) => ({ ...prev, [fileKey]: true }));
             } else {
-                throw new Error('Invalid response format from server');
+                const errorMessage = response.error || 'Failed to fetch columns.';
+                setError(errorMessage);
+                setColumns(null);
+                setSelectedColumns([]);
+                setColumnsLoaded(prev => ({ ...prev, [fileKey]: false }));
             }
-        } catch (error) {
+
+        } catch (error:any) {
             console.error('Error fetching columns:', error);
-            setError(`Error fetching columns: ${error.message}`);
+            setError(error.message || 'An unexpected error occurred while fetching columns.');
             setColumns(null);
             setSelectedColumns([]);
-             // Don't set columnsLoaded on error
+            setColumnsLoaded(prev => ({ ...prev, [fileKey]: false }));
         }
-    }, [setError, columnsInitialized1, columnsInitialized2, columnsLoaded]);
+    }, [columnsLoaded, setError, setColumnsInitialized1, setColumnsInitialized2]);
+
 
 
     useEffect(() => {
@@ -135,43 +94,46 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
     }, [file1, file2, fetchColumns]);
 
 
-    const handleFileChange = (event) => {
-        const file = event.target.files[0];
-        const validationResult = validateFile(file);
-        if (!validationResult.valid) {
-            setError(validationResult.error);
-            event.target.value = '';
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files ? event.target.files[0] : null;
+        setError(null); // Clear previous errors
+        try {
+            validateFile(file);
+        } catch (error: any) {
+            setError(error.message);
+            if(event.target){
+                event.target.value = '';
+            }
             return;
         }
 
-        setError(null);
         if (event.target.id === 'file1') {
             setFile1(file);
             setColumns1(null);
             setSelectedColumns1([]);
             setColumnsInitialized1(false);
-            setColumnsLoaded(prev => ({ ...prev, file1: false })); // Reset loaded status
+            setColumnsLoaded(prev => ({ ...prev, file1: false }));
         } else if (event.target.id === 'file2') {
             setFile2(file);
             setColumns2(null);
             setSelectedColumns2([]);
             setColumnsInitialized2(false);
-            setColumnsLoaded(prev => ({ ...prev, file2: false })); // Reset loaded status
+            setColumnsLoaded(prev => ({ ...prev, file2: false }));
         }
     };
 
-    const handleColumnChange = useCallback((event, index, setSelectedColumns, currentSelectedColumns) => {
+    const handleColumnChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>, index: number, setSelectedColumns: React.Dispatch<React.SetStateAction<string[]>>, currentSelectedColumns: string[]) => {
         const newSelectedColumns = [...currentSelectedColumns];
         newSelectedColumns[index] = event.target.value;
         setSelectedColumns(newSelectedColumns);
         setError(null);
     }, [setError]);
 
-    const addColumnSelector = useCallback((setSelectedColumns, currentSelectedColumns) => {
+    const addColumnSelector = useCallback((setSelectedColumns: React.Dispatch<React.SetStateAction<string[]>>, currentSelectedColumns: string[]) => {
         setSelectedColumns([...currentSelectedColumns, '']);
     }, []);
 
-    const removeColumnSelector = useCallback((index, setSelectedColumns, currentSelectedColumns) => {
+    const removeColumnSelector = useCallback((index: number, setSelectedColumns:  React.Dispatch<React.SetStateAction<string[]>>, currentSelectedColumns: string[]) => {
         if (currentSelectedColumns.length <= 1) {
             setError('At least one column must be selected');
             return;
@@ -179,83 +141,55 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
         const newSelectedColumns = [...currentSelectedColumns];
         newSelectedColumns.splice(index, 1);
         setSelectedColumns(newSelectedColumns);
+        setError(null);
     }, [setError]);
 
     const validateSelections = () => {
         if (!file1 || !file2) {
-            setError('Please select both input files');
-            return false;
+            throw new ColumnValidationError('Please select both input files');
         }
-
+        if(file1 === file2){
+            throw new ColumnValidationError("Please select different files for comparison");
+        }
         if (!selectedColumns1?.length || !selectedColumns2?.length) {
-            setError('Please select at least one column for each file');
-            return false;
+             throw new ColumnValidationError('Please select at least one column for each file');
         }
-
         if (selectedColumns1.some(col => !col) || selectedColumns2.some(col => !col)) {
-            setError('Please select valid columns for all fields');
-            return false;
+            throw new ColumnValidationError('Please select valid columns for all fields');
         }
-
-        console.log('Validation passed:', {
-            file1: file1.name,
-            file2: file2.name,
-            columns1: selectedColumns1,
-            columns2: selectedColumns2,
-            threshold,
-            parser
-        });
-
         return true;
     };
-
-    const handleSubmit = async (event) => {
+    const handleSubmit = async (event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         try {
-            if (!validateSelections()) return;
+            validateSelections();
 
             console.log('Attempting comparison:', {
                 files: [file1?.name, file2?.name],
-                columns: {
-                    file1: selectedColumns1,
-                    file2: selectedColumns2
-                }
+                columns: { file1: selectedColumns1, file2: selectedColumns2 },
+                threshold,
+                parser,
             });
 
-            await onCompare(
-                file1,
-                file2,
-                selectedColumns1,
-                selectedColumns2,
-                threshold,
-                parser
-            );
-        } catch (error) {
+            await onCompare(file1!, file2!, selectedColumns1, selectedColumns2, threshold, parser);
+
+        } catch (error:any) {
             console.error('Comparison failed:', error);
-            setError(`Comparison failed: ${error.message}`);
+            setError(error.message);
         }
     };
 
-    const handleExportSubmit = async (event) => {
+    const handleExportSubmit = async (event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         try {
-            if (!validateSelections()) return;
-            await onExport(
-                file1,
-                file2,
-                selectedColumns1,
-                selectedColumns2,
-                threshold,
-                parser
-            );
-        } catch (error) {
+            validateSelections();
+            await onExport(file1!, file2!, selectedColumns1, selectedColumns2, threshold, parser);
+        } catch (error:any) {
             console.error('Export failed:', error);
-            setError(`Export failed: ${error.message}`);
+            setError(error.message);
         }
     };
-
-
-    return (
+  return (
         <ErrorBoundary>
             <div className="p-4 bg-white rounded-lg shadow">
                 <form className="space-y-6">
@@ -381,55 +315,52 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                             <select
                                 id="parser"
                                 value={parser}
-                                onChange={(e) => setParser(e.target.value)}
+                                onChange={(e) => setParser(e.target.value as ParserOption)}
                                 className="p-2 border rounded"
                             >
-                                <option value="usaddress">usaddress (US)</option>
-                                <option value="pyap">pyap (US/Canada/UK)</option>
+                                <option value={PARSER_OPTIONS.USADDRESS}>usaddress (US)</option>
+                                <option value={PARSER_OPTIONS.PYAP}>pyap (US/Canada/UK)</option>
                             </select>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex gap-4">
-                        <button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={loading}
-                            className={`px-6 py-2 text-white rounded ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-                        >
-                            {loading ? (
-                                <span className="flex items-center">
-                                    <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
-                                    Processing...
-                                </span>
-                            ) : (
-                                'Compare Addresses'
-                            )}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleExportSubmit}
-                            disabled={loading}
-                            className={`px-6 py-2 text-white rounded ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
-                        >
-                            Export to Excel
-                        </button>
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className={`px-6 py-2 text-white rounded ${
+                        loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
+                    >
+                        {loading ? (
+                        <span className="flex items-center">
+                            <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            Processing...
+                        </span>
+                        ) : (
+                        'Compare Addresses'
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleExportSubmit}
+                        disabled={loading}
+                        className={`px-6 py-2 text-white rounded ${
+                        loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                    >
+                        Export Results
+                    </button>
                     </div>
                 </form>
             </div>
         </ErrorBoundary>
     );
 }
-
-FileUploader.propTypes = {
-    onCompare: PropTypes.func.isRequired,
-    onExport: PropTypes.func.isRequired,
-    setError: PropTypes.func.isRequired,
-    loading: PropTypes.bool.isRequired
-};
 
 export default FileUploader;
