@@ -1,48 +1,40 @@
 # Build stage
 FROM node:18-alpine as builder
 
-# Add build essentials
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    git
-
 WORKDIR /app
 
-# Copy package files
+# Copy package files first
 COPY package*.json ./
-
-# Clear npm cache and install dependencies
-RUN npm cache clean --force && \
-    npm install
+RUN npm install
 
 # Copy source code
 COPY . .
 
-# Set build environment
-ENV NODE_ENV=production
-ENV CI=false
-ENV DISABLE_ESLINT_PLUGIN=true
-
-# Build with debug output
-RUN set -x && \
-    npm run build 2>&1 | tee build.log || \
-    (echo "Build failed. Build log:" && cat build.log && exit 1)
+# Build React app with debug output
+RUN npm run build && ls -la build/
 
 # Production stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy built assets
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/server.js ./
+# Copy build files and server
+COPY --from=builder /app/build/ ./build/
+COPY --from=builder /app/package.json ./
+COPY server.js ./
 
-# Install production dependencies including http-proxy-middleware
-RUN npm install --production
+# Install only production dependencies
+RUN npm install --production express
 
+# Verify files after copy
+RUN ls -la build/ && \
+    echo "Server files:" && \
+    ls -la ./
+
+# Runtime configuration
 EXPOSE 8080
+ENV NODE_ENV=production
+ENV PORT=8080
 
-CMD ["npm", "start"]
+# Start server
+CMD ["node", "server.js"]

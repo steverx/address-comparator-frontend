@@ -99,8 +99,16 @@ app.get('/debug', (req, res) => {
     res.json(debugInfo);
 });
 
+// Verify build directory exists
+const buildPath = path.join(__dirname, 'build');
+if (!fs.existsSync(buildPath)) {
+  console.error('Build directory not found:', buildPath);
+  console.log('Current directory contents:', fs.readdirSync(__dirname));
+  process.exit(1);
+}
+
 // Serve static files from the React build
-app.use(express.static(path.join(__dirname, 'build'), {
+app.use(express.static(buildPath, {
     maxAge: '1h',
     etag: true,
     lastModified: true,
@@ -125,7 +133,12 @@ app.use((err, req, res, next) => {
 
 // Handle React routing
 app.get('*', (req, res, next) => {
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+    const indexPath = path.join(buildPath, 'index.html');
+    if (!fs.existsSync(indexPath)) {
+        console.error('index.html not found:', indexPath);
+        return res.status(404).send('Application not found');
+    }
+    res.sendFile(indexPath);
 });
 
 // Error handling middleware
