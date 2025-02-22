@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { AddressComparisonResult } from '../types/fileUploader.types';
+import { utils, writeFile } from 'xlsx';
 
 interface ResultsTableProps {
     results: AddressComparisonResult[];
@@ -77,6 +78,15 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
 
     return (
       <div className="space-y-4">
+        <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Results</h2>
+            <button
+                onClick={() => exportToExcel(results)}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+                Export to Excel
+            </button>
+        </div>
         <div className="flex justify-end">
           <input
             type="text"
@@ -126,6 +136,35 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
         </div>
       </div>
     );
+};
+
+interface MatchResult {
+    original_row: Record<string, any>;
+    matches: Array<{
+        matched_address: string;
+        member_id: string;
+        lic: string;
+        member_name: string;
+        match_score: number;
+    }>;
+}
+
+const exportToExcel = (results: MatchResult[]) => {
+    const exportData = results.flatMap(result => 
+        result.matches.map(match => ({
+            ...result.original_row,
+            matched_address: match.matched_address,
+            member_id: match.member_id,
+            lic: match.lic,
+            member_name: match.member_name,
+            match_score: match.match_score
+        }))
+    );
+
+    const wb = utils.book_new();
+    const ws = utils.json_to_sheet(exportData);
+    utils.book_append_sheet(wb, ws, 'Address Matches');
+    writeFile(wb, 'address_matches.xlsx');
 };
 
 export default ResultsTable;
