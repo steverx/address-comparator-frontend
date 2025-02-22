@@ -2,6 +2,28 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../services/apiService';
 
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("ErrorBoundary caught an error:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return <h1>Something went wrong.</h1>;
+        }
+        return this.props.children;
+    }
+}
+
 function FileUploader({ onCompare, onExport, setError, loading }) {
     const [file1, setFile1] = useState(null);
     const [file2, setFile2] = useState(null);
@@ -19,60 +41,76 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
             formData.append('file', file);
             try {
                 console.log('Fetching columns for file:', file.name);
-
                 const response = await apiRequest('columns', formData);
                 console.log('Response from server:', response);
 
                 if (response.status === 'success' && Array.isArray(response.data)) {
                     const columns = response.data;
                     console.log('Processed columns:', columns);
-
                     setColumns(columns);
 
-                    // Find address-related columns
-                    const addressColumns = columns.filter(col =>
-                        col.toLowerCase().includes('address') ||
-                        col.toLowerCase().includes('street')
-                    );
+                    const addressColumns = columns.filter(col => {
+                        const colLower = col.toLowerCase();
+                        return (
+                            colLower.includes('address') ||
+                            colLower.includes('street') ||
+                            colLower.includes('city') ||
+                            colLower.includes('state') ||
+                            colLower.includes('zip') ||
+                            colLower.includes('postal')
+                        );
+                    });
 
-                    // Set initial selected column
                     if (addressColumns.length > 0) {
-                        setSelectedColumns([addressColumns[0]]);
-                    } else if (columns.length > 0) {
-                        setSelectedColumns([columns[0]]);
+                        console.log('Found address columns:', addressColumns);
+                        setSelectedColumns(addressColumns);
                     } else {
-                        setSelectedColumns([]);
+                        console.log('No address columns found, using first column');
+                        setSelectedColumns(columns.length > 0 ? [columns[0]] : []); // Fix array syntax
                     }
                 } else {
                     throw new Error('Invalid response format from server');
                 }
             } catch (error) {
                 console.error('Error fetching columns:', error);
-                setError(`Error: ${error.message}`);
-                setColumns([]);
+                setError(`Error fetching columns: ${error.message}`);
+                setColumns(null);
                 setSelectedColumns([]);
             }
         }
 
         if (file1) fetchColumns(file1, setColumns1, setSelectedColumns1);
         if (file2) fetchColumns(file2, setColumns2, setSelectedColumns2);
+
+        return () => {
+            // Cleanup file references when component unmounts
+            setFile1(null);
+            setFile2(null);
+            setColumns1(null);
+            setColumns2(null);
+            setSelectedColumns1([]);
+            setSelectedColumns2([]);
+        };
     }, [file1, file2, setError]);
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
         if (!file) return;
+
         const maxSize = 10 * 1024 * 1024; // 10MB
         if (file.size > maxSize) {
             setError('File size exceeds 10MB limit');
             event.target.value = '';
             return;
         }
+
         const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
         if (!['.csv', '.xlsx'].includes(fileExt)) {
             setError('Invalid file type. Please use CSV or Excel files.');
             event.target.value = '';
             return;
         }
+
         setError(null);
         if (event.target.id === 'file1') {
             setFile1(file);
@@ -89,7 +127,7 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
         const newSelectedColumns = [...currentSelectedColumns];
         newSelectedColumns[index] = event.target.value;
         setSelectedColumns(newSelectedColumns);
-        setError(null); // Clear any previous errors
+        setError(null);
     };
 
     const addColumnSelector = (setSelectedColumns, currentSelectedColumns) => {
@@ -108,33 +146,81 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
 
     const validateSelections = () => {
         if (!file1 || !file2) {
-            setError('Please select both files');
+            setError('Please select both input files');
             return false;
         }
-        if (!selectedColumns1.length || !selectedColumns2.length) {
+
+        if (!selectedColumns1?.length || !selectedColumns2?.length) {
             setError('Please select at least one column for each file');
             return false;
         }
-        if (selectedColumns1.includes('') || selectedColumns2.includes('')) {
-            setError('Please select valid columns');
+
+        if (selectedColumns1.some(col => !col) || selectedColumns2.some(col => !col)) {
+            setError('Please select valid columns for all fields');
             return false;
         }
+
+        console.log('Validation passed:', {
+            file1: file1.name,
+            file2: file2.name,
+            columns1: selectedColumns1,
+            columns2: selectedColumns2,
+            threshold,
+            parser
+        });
+
         return true;
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
-        if (!validateSelections()) return;
-        onCompare(file1, file2, selectedColumns1, selectedColumns2, threshold, parser);
+        try {
+            if (!validateSelections()) return;
+
+            // Log attempt
+            console.log('Attempting comparison:', {
+                files: [file1?.name, file2?.name],
+                columns: {
+                    file1: selectedColumns1,
+                    file2: selectedColumns2
+                }
+            });
+
+            await onCompare(
+                file1,
+                file2,
+                selectedColumns1,
+                selectedColumns2,
+                threshold,
+                parser
+            );
+        } catch (error) {
+            console.error('Comparison failed:', error);
+            setError(`Comparison failed: ${error.message}`);
+        }
     };
 
-    const handleExportSubmit = (event) => {
+    const handleExportSubmit = async (event) => {
         event.preventDefault();
-        if (!validateSelections()) return;
-        onExport(file1, file2, selectedColumns1, selectedColumns2, threshold, parser);
+        try {
+            if (!validateSelections()) return;
+            await onExport(
+                file1,
+                file2,
+                selectedColumns1,
+                selectedColumns2,
+                threshold,
+                parser
+            );
+        } catch (error) {
+            console.error('Export failed:', error);
+            setError(`Export failed: ${error.message}`);
+        }
     };
+
 
     return (
+        <ErrorBoundary>
         <div className="p-4 bg-white rounded-lg shadow">
             <form className="space-y-6">
                 {/* File 1 Section */}
@@ -276,7 +362,17 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                         disabled={loading}
                         className={`px-6 py-2 text-white rounded ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                     >
-                        {loading ? 'Processing...' : 'Compare Addresses'}
+                        {loading ? (
+                            <span className="flex items-center">
+                                <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                Processing...
+                            </span>
+                        ) : (
+                            'Compare Addresses'
+                        )}
                     </button>
                     <button
                         type="button"
@@ -289,6 +385,7 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                 </div>
             </form>
         </div>
+        </ErrorBoundary>
     );
 }
 
