@@ -1,40 +1,47 @@
 # Build stage
 FROM node:18-alpine as builder
 
-# Add Python and build tools
-RUN apk add --no-cache python3 make g++ git
+# Add build essentials
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git
 
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy package files
 COPY package*.json ./
 
-# Install dependencies with clean cache
+# Clear npm cache and install dependencies
 RUN npm cache clean --force && \
-    npm install --legacy-peer-deps
+    npm install
 
 # Copy source code
 COPY . .
 
-# Set environment variable to ignore TypeScript errors during build
-ENV CI=false
+# Set build environment
 ENV NODE_ENV=production
+ENV CI=false
+ENV DISABLE_ESLINT_PLUGIN=true
 
-# Build application with increased memory limit
-RUN npm run build || (cat /root/.npm/_logs/*-debug.log && exit 1)
+# Build with debug output
+RUN set -x && \
+    npm run build 2>&1 | tee build.log || \
+    (echo "Build failed. Build log:" && cat build.log && exit 1)
 
 # Production stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy only necessary files
+# Copy built assets
 COPY --from=builder /app/build ./build
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server.js ./
 
 # Install production dependencies
-RUN npm install --production --legacy-peer-deps
+RUN npm install --production
 
 EXPOSE 8080
 
