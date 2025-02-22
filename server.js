@@ -60,17 +60,11 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check endpoint - MUST come before static files
 app.get('/health', (req, res) => {
-    const healthData = {
+    console.log('Health check requested:', new Date().toISOString());
+    res.status(200).json({
         status: 'healthy',
-        timestamp: new Date().toISOString(),
-        port: process.env.PORT,
-        env: process.env.NODE_ENV,
-        memory: process.memoryUsage(),
-        uptime: process.uptime()
-    };
-    
-    console.log('Health check response:', healthData);
-    res.status(200).json(healthData);
+        timestamp: new Date().toISOString()
+    });
 });
 
 // Debug endpoint
@@ -119,18 +113,7 @@ app.use((err, req, res, next) => {
 
 // Handle React routing
 app.get('*', (req, res, next) => {
-    const indexPath = path.join(__dirname, 'build', 'index.html');
-    res.set({
-        'Content-Type': 'text/html',
-        'Content-Disposition': 'inline',
-        'X-Content-Type-Options': 'nosniff'
-    });
-    res.sendFile(indexPath, err => {
-        if (err) {
-            console.error('Error serving index.html:', err);
-            next(err);
-        }
-    });
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 // Error handling middleware

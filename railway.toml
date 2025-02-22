@@ -4,11 +4,10 @@ builder = "NIXPACKS"
 [deploy]
 startCommand = "node server.js"
 healthcheckPath = "/health"
-healthcheckTimeout = 60
-healthcheckInterval = 15
+healthcheckTimeout = 10
+healthcheckInterval = 5
 restartPolicyType = "ON_FAILURE"
-healthcheckProtocol = "http"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 3
 
 [[ports]]
 port = "8080"
