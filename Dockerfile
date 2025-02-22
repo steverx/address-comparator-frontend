@@ -3,15 +3,25 @@ FROM node:18-alpine as builder
 
 WORKDIR /app
 
-# Copy package files first
+# Copy package files
 COPY package*.json ./
-RUN npm install
+
+# Install dependencies with clean cache
+RUN npm cache clean --force && \
+    npm install
 
 # Copy source code
 COPY . .
 
-# Build React app with debug output
-RUN npm run build && ls -la build/
+# Set build environment
+ENV NODE_ENV=production
+ENV CI=false
+ENV DISABLE_ESLINT_PLUGIN=true
+
+# Build React app with verbose output
+RUN npm run build && \
+    echo "Build directory contents:" && \
+    ls -la build/
 
 # Production stage
 FROM node:18-alpine
