@@ -1,4 +1,3 @@
-// src/components/FileUploader.js
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../services/apiService';
 
@@ -33,9 +32,11 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
     const [selectedColumns2, setSelectedColumns2] = useState([]);
     const [threshold, setThreshold] = useState(80);
     const [parser, setParser] = useState('usaddress');
+    const [columnsInitialized1, setColumnsInitialized1] = useState(false);
+    const [columnsInitialized2, setColumnsInitialized2] = useState(false);
 
     useEffect(() => {
-        async function fetchColumns(file, setColumns, setSelectedColumns) {
+        async function fetchColumns(file, setColumns, setSelectedColumns, isFile1) {
             if (!file) return;
             const formData = new FormData();
             formData.append('file', file);
@@ -43,30 +44,40 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
                 console.log('Fetching columns for file:', file.name);
                 const response = await apiRequest('columns', formData);
                 console.log('Response from server:', response);
-
+    
                 if (response.status === 'success' && Array.isArray(response.data)) {
                     const columns = response.data;
                     console.log('Processed columns:', columns);
                     setColumns(columns);
-
-                    const addressColumns = columns.filter(col => {
-                        const colLower = col.toLowerCase();
-                        return (
-                            colLower.includes('address') ||
-                            colLower.includes('street') ||
-                            colLower.includes('city') ||
-                            colLower.includes('state') ||
-                            colLower.includes('zip') ||
-                            colLower.includes('postal')
-                        );
-                    });
-
-                    if (addressColumns.length > 0) {
-                        console.log('Found address columns:', addressColumns);
-                        setSelectedColumns(addressColumns);
-                    } else {
-                        console.log('No address columns found, using first column');
-                        setSelectedColumns(columns.length > 0 ? [columns[0]] : []); // Fix array syntax
+    
+                    // Only set initial columns if not already initialized
+                    if ((isFile1 && !columnsInitialized1) || (!isFile1 && !columnsInitialized2)) {
+                        const addressColumns = columns.filter(col => {
+                            const colLower = col.toLowerCase();
+                            return (
+                                colLower.includes('address') ||
+                                colLower.includes('street') ||
+                                colLower.includes('city') ||
+                                colLower.includes('state') ||
+                                colLower.includes('zip') ||
+                                colLower.includes('postal')
+                            );
+                        });
+    
+                        if (addressColumns.length > 0) {
+                            console.log('Found address columns:', addressColumns);
+                            setSelectedColumns(addressColumns);
+                        } else {
+                            console.log('No address columns found, using first column');
+                            setSelectedColumns(columns.length > 0 ? [columns[0]] : []);
+                        }
+    
+                        // Mark as initialized
+                        if (isFile1) {
+                            setColumnsInitialized1(true);
+                        } else {
+                            setColumnsInitialized2(true);
+                        }
                     }
                 } else {
                     throw new Error('Invalid response format from server');
@@ -74,52 +85,42 @@ function FileUploader({ onCompare, onExport, setError, loading }) {
             } catch (error) {
                 console.error('Error fetching columns:', error);
                 setError(`Error fetching columns: ${error.message}`);
-                setColumns(null);
-                setSelectedColumns([]);
+                setColumns([]);
             }
         }
+    
+        if (file1) fetchColumns(file1, setColumns1, setSelectedColumns1, true);
+        if (file2) fetchColumns(file2, setColumns2, setSelectedColumns2, false);
 
-        if (file1) fetchColumns(file1, setColumns1, setSelectedColumns1);
-        if (file2) fetchColumns(file2, setColumns2, setSelectedColumns2);
-
-        return () => {
-            // Cleanup file references when component unmounts
-            setFile1(null);
-            setFile2(null);
-            setColumns1(null);
-            setColumns2(null);
-            setSelectedColumns1([]);
-            setSelectedColumns2([]);
-        };
-    }, [file1, file2, setError]);
+    }, [file1, file2, setError, columnsInitialized1, columnsInitialized2]);
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
         if (!file) return;
-
+    
         const maxSize = 10 * 1024 * 1024; // 10MB
         if (file.size > maxSize) {
             setError('File size exceeds 10MB limit');
             event.target.value = '';
             return;
         }
-
+    
         const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
         if (!['.csv', '.xlsx'].includes(fileExt)) {
             setError('Invalid file type. Please use CSV or Excel files.');
             event.target.value = '';
             return;
         }
-
+    
         setError(null);
         if (event.target.id === 'file1') {
             setFile1(file);
             setColumns1(null);
-            setSelectedColumns1([]);
+            setColumnsInitialized1(false);
         } else if (event.target.id === 'file2') {
             setFile2(file);
             setColumns2(null);
-            setSelectedColumns2([]);
+            setColumnsInitialized2(false);
         }
     };
 
