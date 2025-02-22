@@ -16,13 +16,17 @@
       "@services/*": ["services/*"]
     },
     "sourceMap": true,
-    "target": "es5",
+    "target": "esnext",  // <--- CHANGED THIS LINE
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "strict": true
+    "strict": true,
+    "noUnusedLocals": true,       // Add this
+    "noUnusedParameters": true,   // Add this
+    "exactOptionalPropertyTypes": true, //Add this
+    "noImplicitReturns": true      //Add this
   },
   "include": [
     "src/**/*.ts",

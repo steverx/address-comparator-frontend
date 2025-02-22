@@ -32,7 +32,7 @@ export type FileKey = 'file1' | 'file2';
 
 export type ParserOption = 'usaddress' | 'pyap';
 
-// --- Custom Error Classes (Moved here) ---
+// --- Custom Error Classes ---
 export class FileValidationError extends Error {
     constructor(message: string) {
         super(message);
@@ -47,10 +47,31 @@ export class ColumnValidationError extends Error {
     }
 }
 
-// You *could* put API response types here too, for even more organization:
+// API Response Types
 export interface ColumnApiResponse {
     status: 'success' | 'error';
     data?: string[];  // Optional because it might not be present on error
     suggested_address_columns?: string[]; // Optional suggested columns
     error?: string;   // Optional error message
+}
+
+export interface AddressComparisonResult {
+    source_address: string;
+    normalized_source?: string; // These should be optional, in case normalization fails
+    matched_address: string;
+    normalized_match?: string;
+    match_score: number;
+    source_columns?: Record<string, string>;  // Optional: original values of source columns
+    matched_columns?: Record<string, string>; // Optional: original values of matched columns
+}
+
+export interface ApiResponse {  // This is for the *overall* API response (including status, etc.)
+    status: 'success' | 'error';
+    data?: AddressComparisonResult[];  // The actual comparison results
+    error?: string;
+    metadata?: {
+        total_comparisons: number; // Example metadata
+        matches_found: number;
+    };
+    job_id?: string; // If you're using job IDs
 }

@@ -16,8 +16,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onCompare, onExport, setErr
     const [selectedColumns2, setSelectedColumns2] = useState<string[]>([]);
     const [threshold, setThreshold] = useState<number>(80);
     const [parser, setParser] = useState<ParserOption>(PARSER_OPTIONS.USADDRESS); // Use the type and constant
-    const [columnsInitialized1, setColumnsInitialized1] = useState<boolean>(false);
-    const [columnsInitialized2, setColumnsInitialized2] = useState<boolean>(false);
     const [columnsLoaded, setColumnsLoaded] = useState<ColumnsState>({
         file1: false,
         file2: false,
@@ -43,32 +41,31 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onCompare, onExport, setErr
     }, []);
 
 
-    const fetchColumns = useCallback(async (file: File, setColumns: (cols: string[] | null) => void, setSelectedColumns: (cols: string[]) => void, fileKey: FileKey) => {
+    const fetchColumns = useCallback(async (
+        file: File,
+        setColumns: (cols: string[] | null) => void,
+        setSelectedColumns: (cols: string[]) => void,
+        fileKey: FileKey
+    ) => {
         if (!file || columnsLoaded[fileKey]) return;
-
+    
         const formData = new FormData();
         formData.append('file', file);
-
+    
         try {
-            const response: ColumnApiResponse = await apiRequest('columns', formData); // Type the response!
-
+            const response: ColumnApiResponse = await apiRequest('columns', formData);
+    
             if (response.status === 'success' && Array.isArray(response.data)) {
                 setColumns(response.data);
-
+    
                 if (response.suggested_address_columns && response.suggested_address_columns.length > 0) {
                     setSelectedColumns(response.suggested_address_columns);
-
-                    if (fileKey === 'file1') {
-                        setColumnsInitialized1(true);
-                    } else {
-                        setColumnsInitialized2(true);
-                    }
                 } else {
-                  const firstColumn = response.data.length > 0 ? [response.data[0]] : [];
-                  setSelectedColumns(firstColumn);
+                    const firstColumn = response.data.length > 0 ? [response.data[0]] : [];
+                    setSelectedColumns(firstColumn);
                 }
-
-                  setColumnsLoaded((prev) => ({ ...prev, [fileKey]: true }));
+    
+                setColumnsLoaded((prev) => ({ ...prev, [fileKey]: true }));
             } else {
                 const errorMessage = response.error || 'Failed to fetch columns.';
                 setError(errorMessage);
@@ -76,15 +73,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onCompare, onExport, setErr
                 setSelectedColumns([]);
                 setColumnsLoaded(prev => ({ ...prev, [fileKey]: false }));
             }
-
-        } catch (error:any) {
+        } catch (error: any) {
             console.error('Error fetching columns:', error);
             setError(error.message || 'An unexpected error occurred while fetching columns.');
             setColumns(null);
             setSelectedColumns([]);
             setColumnsLoaded(prev => ({ ...prev, [fileKey]: false }));
         }
-    }, [columnsLoaded, setError, setColumnsInitialized1, setColumnsInitialized2]);
+    }, [columnsLoaded, setError]); // Remove setColumnsInitialized1 and setColumnsInitialized2 from dependencies
 
 
 
@@ -106,18 +102,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onCompare, onExport, setErr
             }
             return;
         }
-
+    
         if (event.target.id === 'file1') {
             setFile1(file);
             setColumns1(null);
             setSelectedColumns1([]);
-            setColumnsInitialized1(false);
             setColumnsLoaded(prev => ({ ...prev, file1: false }));
         } else if (event.target.id === 'file2') {
             setFile2(file);
             setColumns2(null);
             setSelectedColumns2([]);
-            setColumnsInitialized2(false);
             setColumnsLoaded(prev => ({ ...prev, file2: false }));
         }
     };
