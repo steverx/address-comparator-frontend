@@ -37,11 +37,11 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <FileUpload
-        onDataLoaded={(data, headers) => {
-          setFileData(data);
-          setColumns(headers);
-        }}
-      />
+  onDataLoaded={(data: Record<string, string>[], headers: string[]) => {
+    setFileData(data);
+    setColumns(headers);
+  }}
+/>
 
       <div>
         <label className="block text-sm font-medium text-gray-700">
