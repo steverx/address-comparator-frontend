@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { utils, writeFile } from 'xlsx';
-import type { AddressComparisonResult } from '../types/address';
+import { saveAs } from 'file-saver';
+import type { ComparisonResult } from '../types/address';
 
 interface ResultsTableProps {
-    results: AddressComparisonResult[];
+    results: ComparisonResult[];
 }
 
 const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
-    const [sortConfig, setSortConfig] = useState<{ key: keyof AddressComparisonResult | null; direction: 'ascending' | 'descending' }>({ key: null, direction: 'ascending' });
+    const [sortConfig, setSortConfig] = useState<{ key: keyof ComparisonResult | null; direction: 'ascending' | 'descending' }>({ key: null, direction: 'ascending' });
     const [searchTerm, setSearchTerm] = useState('');
 
   const processedResults = useMemo(() => {
@@ -49,7 +50,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
     return filteredResults;
   }, [results, sortConfig, searchTerm]);
 
-    const handleSort = (key: keyof AddressComparisonResult) => {
+    const handleSort = (key: keyof ComparisonResult) => {
         setSortConfig(prevConfig => ({
             key,
             direction: prevConfig.key === key && prevConfig.direction === 'ascending'
@@ -74,9 +75,9 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
       console.error('Results prop must be an array');
       return <div className="text-red-500">Error: Invalid results format</div>;
     }
-        const validKeys: (keyof AddressComparisonResult)[] = ['source_address', 'matched_address', 'match_score'];
+        const validKeys: (keyof ComparisonResult)[] = ['source_address', 'matched_address', 'match_score'];
 
-    const exportToExcel = (data: AddressComparisonResult[]) => {
+    const exportToExcel = (data: ComparisonResult[]) => {
         const exportData = data.map(result => ({
             source_address: result.source_address,
             matched_address: result.matched_address,
@@ -90,10 +91,27 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
     };
 
     const handleExport = () => {
-        const ws = utils.json_to_sheet(results);
-        const wb = utils.book_new();
-        utils.book_append_sheet(wb, ws, 'Results');
-        writeFile(wb, 'address_comparison_results.xlsx');
+        try {
+            // Convert results to worksheet
+            const ws = utils.json_to_sheet(results);
+            const wb = utils.book_new();
+            utils.book_append_sheet(wb, ws, 'Results');
+
+            // Generate Excel file
+            const excelBuffer = writeFile(wb, 'address_comparison_results.xlsx', { 
+                bookType: 'xlsx', 
+                type: 'array' 
+            });
+
+            // Save file using file-saver
+            const blob = new Blob([excelBuffer], { 
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+            });
+            saveAs(blob, 'address_comparison_results.xlsx');
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert('Failed to export results. Please try again.');
+        }
     };
 
     return (

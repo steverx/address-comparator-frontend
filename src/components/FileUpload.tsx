@@ -27,7 +27,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
 
       onDataLoaded(data, headers);
     } catch (error) {
-      setError('Error reading file. Please try again.');
+      setError('Error reading file. Please check the file format.');
       console.error('File upload error:', error);
     } finally {
       setLoading(false);
@@ -36,22 +36,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
 
   return (
     <div className="p-4 border rounded-lg bg-white shadow-sm">
-      <label className="block">
-        <span className="text-gray-700">Upload Excel File</span>
-        <input
-          type="file"
-          accept=".xlsx,.xls,.csv"
-          onChange={handleFileUpload}
-          className="mt-1 block w-full"
-          disabled={loading}
-        />
-      </label>
-      {loading && (
-        <div className="mt-2 text-blue-600">Loading file...</div>
-      )}
-      {error && (
-        <div className="mt-2 text-red-600">{error}</div>
-      )}
+      <input
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        onChange={handleFileUpload}
+        className="block w-full"
+        disabled={loading}
+      />
+      {error && <div className="mt-2 text-red-600">{error}</div>}
+      {loading && <div className="mt-2 text-blue-600">Loading file...</div>}
     </div>
   );
 };
