@@ -1,19 +1,17 @@
-// ComparisonForm.tsx (Corrected)
 import React, { useState } from 'react';
-import FileUpload from './FileUpload';
 import { compareAddresses } from '../services/addressService';
 import { ComparisonResult } from '../types/address';
 
 interface ComparisonFormProps {
+  fileData: Record<string, string>[];
+  columns: string[];
   onResults: (results: ComparisonResult[]) => void;
 }
 
-const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
+const ComparisonForm: React.FC<ComparisonFormProps> = ({ fileData, columns, onResults }) => {
   const [threshold, setThreshold] = useState<number>(80);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [fileData, setFileData] = useState<Record<string, string>[]>([]);
-  const [columns, setColumns] = useState<string[]>([]);
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -36,13 +34,6 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <FileUpload
-  onDataLoaded={(data: Record<string, string>[], headers: string[]) => {
-    setFileData(data);
-    setColumns(headers);
-  }}
-/>
-
       <div>
         <label className="block text-sm font-medium text-gray-700">
           Match Threshold (%)

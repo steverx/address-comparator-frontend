@@ -18,8 +18,8 @@ const App: React.FC = () => {
       }} />
       {fileData.length > 0 && (
         <ComparisonForm 
-          data={fileData}
-          headers={headers}
+          fileData={fileData}
+          columns={headers}
           onResults={setResults}
         />
       )}
