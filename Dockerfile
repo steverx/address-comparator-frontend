@@ -12,8 +12,8 @@ RUN apk add --no-cache \
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with legacy peer deps
-RUN npm install --legacy-peer-deps
+# Install dependencies
+RUN npm install
 
 # Copy source files
 COPY public/ ./public/
@@ -41,7 +41,7 @@ COPY --from=builder /app/package.json ./
 COPY server.js ./
 
 # Install production dependencies
-RUN npm install --production --legacy-peer-deps
+RUN npm install --production
 
 EXPOSE 8080
 ENV PORT=8080
