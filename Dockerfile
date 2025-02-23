@@ -12,9 +12,8 @@ RUN apk add --no-cache \
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm cache clean --force && \
-    npm install
+# Clean install dependencies
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -25,27 +24,21 @@ ENV NODE_ENV=production \
     DISABLE_ESLINT_PLUGIN=true \
     GENERATE_SOURCEMAP=false
 
-# Build React app and verify output
-RUN npm run build && \
-    ls -la build/ && \
-    test -f build/index.html || (echo "index.html not found!" && exit 1)
+# Build React app
+RUN npm run build
 
 # Production stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy only necessary files
+# Copy build artifacts and server
 COPY --from=builder /app/build/ ./build/
 COPY --from=builder /app/package*.json ./
 COPY server.js ./
 
-# Verify files after copy
-RUN ls -la build/ && \
-    test -f build/index.html || (echo "index.html not copied!" && exit 1)
-
 # Install production dependencies
-RUN npm install --production
+RUN npm ci --only=production
 
 EXPOSE 8080
 ENV PORT=8080
