@@ -1,12 +1,13 @@
+import { endpoints } from '../config/api';
 import { ComparisonResult, ApiResponse } from '../types/address';
 
-export async function compareAddresses(request: {
-  sourceFile: Record<string, string>[];
-  columns: string[];
-  threshold: number;
-}): Promise<ComparisonResult[]> {
+export const compareAddresses = async (request: {
+  sourceFile: Record<string, string>[],
+  columns: string[],
+  threshold: number
+}): Promise<ComparisonResult[]> => {
   try {
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/compare`, {
+    const response = await fetch(endpoints.compare, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -15,7 +16,10 @@ export async function compareAddresses(request: {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => null);
+      throw new Error(
+        errorData?.message || `HTTP error! status: ${response.status}`
+      );
     }
 
     const result: ApiResponse = await response.json();
@@ -24,4 +28,4 @@ export async function compareAddresses(request: {
     console.error('Failed to compare addresses:', error);
     throw error;
   }
-}
+};

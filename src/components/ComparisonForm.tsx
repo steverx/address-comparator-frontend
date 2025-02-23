@@ -1,45 +1,73 @@
-import React, { useState, Dispatch, SetStateAction } from 'react';
+import React, { useState } from 'react';
+import FileUpload from './FileUpload';
 import { compareAddresses } from '../services/addressService';
 import { ComparisonResult } from '../types/address';
 
 interface ComparisonFormProps {
-  data: Record<string, string>[];
-  headers: string[];
-  onResults: Dispatch<SetStateAction<ComparisonResult[]>>;
+  onResults: (results: ComparisonResult[]) => void;
 }
 
-const ComparisonForm: React.FC<ComparisonFormProps> = ({ data, headers, onResults }) => {
+const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
+  const [threshold, setThreshold] = useState<number>(80);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fileData, setFileData] = useState<Record<string, string>[]>([]);
+  const [columns, setColumns] = useState<string[]>([]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
       const results = await compareAddresses({
-        sourceFile: data,
-        columns: headers,
-        threshold: 80
+        sourceFile: fileData,
+        columns: columns,
+        threshold: threshold
       });
       onResults(results);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4">
-      {error && <div className="text-red-500 mb-4">{error}</div>}
-      <button 
-        type="submit" 
-        disabled={loading}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
+    <form onSubmit={onSubmit} className="space-y-4">
+      <FileUpload 
+        onDataLoaded={(data, headers) => {
+          setFileData(data);
+          setColumns(headers);
+        }} 
+      />
+      
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Match Threshold (%)
+        </label>
+        <input
+          type="number"
+          value={threshold}
+          onChange={(e) => setThreshold(Number(e.target.value))}
+          min="0"
+          max="100"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+        />
+      </div>
+
+      {error && (
+        <div className="text-red-600">{error}</div>
+      )}
+
+      <button
+        type="submit"
+        disabled={loading || fileData.length === 0}
+        className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+          loading ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
       >
-        {loading ? 'Comparing...' : 'Compare Addresses'}
+        {loading ? 'Processing...' : 'Compare Addresses'}
       </button>
     </form>
   );
