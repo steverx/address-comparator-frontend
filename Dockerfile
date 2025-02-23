@@ -3,7 +3,7 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Add build essentials
 RUN apk add --no-cache \
     python3 \
     make \
@@ -12,11 +12,13 @@ RUN apk add --no-cache \
 # Copy package files
 COPY package*.json ./
 
-# Clean install dependencies
-RUN npm ci
+# Install dependencies with legacy peer deps
+RUN npm install --legacy-peer-deps
 
-# Copy source code
-COPY . .
+# Copy source files
+COPY public/ ./public/
+COPY src/ ./src/
+COPY tsconfig.json ./
 
 # Set build environment
 ENV NODE_ENV=production \
@@ -24,21 +26,22 @@ ENV NODE_ENV=production \
     DISABLE_ESLINT_PLUGIN=true \
     GENERATE_SOURCEMAP=false
 
-# Build React app
-RUN npm run build
+# Build with debug output
+RUN npm run build && \
+    ls -la build/
 
 # Production stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy build artifacts and server
+# Copy build files and server
 COPY --from=builder /app/build/ ./build/
-COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/package.json ./
 COPY server.js ./
 
 # Install production dependencies
-RUN npm ci --only=production
+RUN npm install --production --legacy-peer-deps
 
 EXPOSE 8080
 ENV PORT=8080

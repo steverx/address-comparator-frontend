@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { utils, writeFile } from 'xlsx';
-// Remove unused MatchResult import if not needed
 import type { AddressComparisonResult } from '../types/address';
 
 interface ResultsTableProps {
@@ -90,13 +89,20 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
         writeFile(wb, 'address_matches.xlsx');
     };
 
+    const handleExport = () => {
+        const ws = utils.json_to_sheet(results);
+        const wb = utils.book_new();
+        utils.book_append_sheet(wb, ws, 'Results');
+        writeFile(wb, 'address_comparison_results.xlsx');
+    };
+
     return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 mt-8">
+        <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Results</h2>
             <button
-                onClick={() => exportToExcel(results)}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                onClick={handleExport}
+                className="bg-green-500 text-white px-4 py-2 rounded"
             >
                 Export to Excel
             </button>
@@ -114,7 +120,7 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
           Showing {processedResults.length} of {results.length} results
         </div>
         <div className="overflow-x-auto rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full bg-white divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
               {validKeys.map((key) => (
