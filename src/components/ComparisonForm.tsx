@@ -1,3 +1,4 @@
+// ComparisonForm.tsx (Corrected)
 import React, { useState } from 'react';
 import FileUpload from './FileUpload';
 import { compareAddresses } from '../services/addressService';
