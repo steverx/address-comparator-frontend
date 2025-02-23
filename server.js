@@ -16,42 +16,34 @@ app.set('x-powered-by', false);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Basic request logging
+// Unified request logging
 app.use((req, res, next) => {
-  const start = Date.now();
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  const startTime = Date.now();
   
-  res.on('finish', () => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - ${res.statusCode} - ${Date.now() - start}ms`);
+  // Log request
+  console.log('Request received:', {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.url,
+    headers: {
+      host: req.get('host'),
+      'x-forwarded-proto': req.get('x-forwarded-proto'),
+      'x-forwarded-for': req.get('x-forwarded-for'),
+      'x-real-ip': req.get('x-real-ip')
+    }
   });
+
+  // Log response
+  res.on('finish', () => {
+    console.log('Response sent:', {
+      method: req.method,
+      url: req.url,
+      status: res.statusCode,
+      duration: `${Date.now() - startTime}ms`
+    });
+  });
+  
   next();
-});
-
-// Enhanced request logging
-app.use((req, res, next) => {
-    const startTime = Date.now();
-    console.log('Request received:', {
-        timestamp: new Date().toISOString(),
-        method: req.method,
-        url: req.url,
-        headers: {
-            host: req.get('host'),
-            'x-forwarded-proto': req.get('x-forwarded-proto'),
-            'x-forwarded-for': req.get('x-forwarded-for'),
-            'x-real-ip': req.get('x-real-ip')
-        }
-    });
-
-    // Log response completion
-    res.on('finish', () => {
-        console.log('Response sent:', {
-            method: req.method,
-            url: req.url,
-            status: res.statusCode,
-            duration: Date.now() - startTime
-        });
-    });
-    next();
 });
 
 // Add proxy middleware for API requests
@@ -143,14 +135,36 @@ app.get('*', (req, res, next) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({
-        error: 'Internal server error',
-        timestamp: new Date().toISOString()
-    });
+  const errorDetails = {
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    timestamp: new Date().toISOString(),
+    path: req.path,
+    method: req.method
+  };
+  
+  console.error('Server error:', errorDetails);
+  
+  res.status(err.status || 500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Enhanced server startup with port retry
+/**
+ * @typedef {Object} ServerInfo
+ * @property {number} port - Server port
+ * @property {string} env - Node environment
+ * @property {string} domain - Railway domain
+ * @property {number} pid - Process ID
+ */
+
+/**
+ * Starts the server on the specified port
+ * @param {number} port - Port to start server on
+ * @returns {Promise<import('http').Server>} HTTP server instance
+ */
 const startServer = async (port) => {
     const server = createServer(app);
   
@@ -194,7 +208,16 @@ const startServer = async (port) => {
     return server;
 };
 
-const server = startServer(PORT);
+// Initialize server
+let server;
+startServer(PORT)
+  .then(serverInstance => {
+    server = serverInstance;
+  })
+  .catch(error => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  });
 
 // Enhanced graceful shutdown
 process.on('SIGTERM', () => {
