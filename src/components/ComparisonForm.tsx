@@ -9,7 +9,7 @@ interface ComparisonFormProps {
 
 const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
   const [threshold, setThreshold] = useState<number>(80);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [fileData, setFileData] = useState<Record<string, string>[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
@@ -23,9 +23,9 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
       const results = await compareAddresses({
         sourceFile: fileData,
         columns: columns,
-        threshold: threshold
+        threshold: threshold,
       });
-      onResults(results);
+      onResults(results); // Pass the results to the parent component
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -35,13 +35,13 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <FileUpload 
+      <FileUpload
         onDataLoaded={(data, headers) => {
           setFileData(data);
           setColumns(headers);
-        }} 
+        }}
       />
-      
+
       <div>
         <label className="block text-sm font-medium text-gray-700">
           Match Threshold (%)
@@ -56,9 +56,7 @@ const ComparisonForm: React.FC<ComparisonFormProps> = ({ onResults }) => {
         />
       </div>
 
-      {error && (
-        <div className="text-red-600">{error}</div>
-      )}
+      {error && <div className="text-red-600">{error}</div>}
 
       <button
         type="submit"
